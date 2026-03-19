@@ -1,0 +1,262 @@
+{
+  "$schema": "apex-cortex-pid-map-v1",
+  "id": "generic_obd2",
+  "name": "Standard OBD-II Mode 01 PIDs",
+  "description": "ISO 15031-5 standard OBD-II parameter IDs supported by all compliant vehicles",
+  "mode": "01",
+  "pids": {
+    "0x04": {
+      "name": "engine_load",
+      "description": "Calculated engine load",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x05": {
+      "name": "coolant_temp",
+      "description": "Engine coolant temperature",
+      "formula": "A - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 215,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium"
+    },
+    "0x06": {
+      "name": "short_fuel_trim_bank1",
+      "description": "Short term fuel trim - Bank 1",
+      "formula": "(A / 1.28) - 100",
+      "unit": "%",
+      "min": -100,
+      "max": 99.2,
+      "bytes": 1,
+      "sample_rate_hz": 5,
+      "priority": "medium"
+    },
+    "0x07": {
+      "name": "long_fuel_trim_bank1",
+      "description": "Long term fuel trim - Bank 1",
+      "formula": "(A / 1.28) - 100",
+      "unit": "%",
+      "min": -100,
+      "max": 99.2,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "low"
+    },
+    "0x0B": {
+      "name": "intake_manifold_pressure",
+      "description": "Intake manifold absolute pressure",
+      "formula": "A",
+      "unit": "kPa",
+      "min": 0,
+      "max": 255,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x0C": {
+      "name": "rpm",
+      "description": "Engine RPM",
+      "formula": "((A * 256) + B) / 4",
+      "unit": "rpm",
+      "min": 0,
+      "max": 16383.75,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x0D": {
+      "name": "speed",
+      "description": "Vehicle speed",
+      "formula": "A",
+      "unit": "km/h",
+      "min": 0,
+      "max": 255,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "critical"
+    },
+    "0x0E": {
+      "name": "timing_advance",
+      "description": "Timing advance",
+      "formula": "(A / 2) - 64",
+      "unit": "° before TDC",
+      "min": -64,
+      "max": 63.5,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "medium"
+    },
+    "0x0F": {
+      "name": "intake_air_temp",
+      "description": "Intake air temperature",
+      "formula": "A - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 215,
+      "bytes": 1,
+      "sample_rate_hz": 2,
+      "priority": "medium"
+    },
+    "0x10": {
+      "name": "maf_flow",
+      "description": "MAF air flow rate",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "g/s",
+      "min": 0,
+      "max": 655.35,
+      "bytes": 2,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x11": {
+      "name": "throttle_position",
+      "description": "Throttle position",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x14": {
+      "name": "o2_voltage_bank1_sensor1",
+      "description": "Oxygen sensor voltage - Bank 1, Sensor 1",
+      "formula": "A / 200",
+      "unit": "V",
+      "min": 0,
+      "max": 1.275,
+      "bytes": 2,
+      "sample_rate_hz": 5,
+      "priority": "medium"
+    },
+    "0x2F": {
+      "name": "fuel_level",
+      "description": "Fuel tank level input",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 0.2,
+      "priority": "low"
+    },
+    "0x33": {
+      "name": "barometric_pressure",
+      "description": "Absolute barometric pressure",
+      "formula": "A",
+      "unit": "kPa",
+      "min": 0,
+      "max": 255,
+      "bytes": 1,
+      "sample_rate_hz": 0.5,
+      "priority": "low"
+    },
+    "0x42": {
+      "name": "control_module_voltage",
+      "description": "Control module voltage",
+      "formula": "((A * 256) + B) / 1000",
+      "unit": "V",
+      "min": 0,
+      "max": 65.535,
+      "bytes": 2,
+      "sample_rate_hz": 1,
+      "priority": "low"
+    },
+    "0x43": {
+      "name": "absolute_load",
+      "description": "Absolute load value",
+      "formula": "((A * 256) + B) / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 25700,
+      "bytes": 2,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x44": {
+      "name": "commanded_afr",
+      "description": "Commanded air-fuel equivalence ratio (lambda)",
+      "formula": "((A * 256) + B) / 32768",
+      "unit": "ratio",
+      "min": 0,
+      "max": 2,
+      "bytes": 2,
+      "sample_rate_hz": 5,
+      "priority": "high"
+    },
+    "0x45": {
+      "name": "relative_throttle",
+      "description": "Relative throttle position",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x46": {
+      "name": "ambient_air_temp",
+      "description": "Ambient air temperature",
+      "formula": "A - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 215,
+      "bytes": 1,
+      "sample_rate_hz": 0.2,
+      "priority": "low"
+    },
+    "0x5C": {
+      "name": "oil_temp",
+      "description": "Engine oil temperature",
+      "formula": "A - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 215,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "high"
+    },
+    "0x61": {
+      "name": "torque_demand",
+      "description": "Driver's demand engine torque (percent)",
+      "formula": "A - 125",
+      "unit": "%",
+      "min": -125,
+      "max": 130,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x62": {
+      "name": "actual_torque",
+      "description": "Actual engine torque (percent)",
+      "formula": "A - 125",
+      "unit": "%",
+      "min": -125,
+      "max": 130,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x63": {
+      "name": "reference_torque",
+      "description": "Engine reference torque",
+      "formula": "(A * 256) + B",
+      "unit": "Nm",
+      "min": 0,
+      "max": 65535,
+      "bytes": 2,
+      "sample_rate_hz": 0.5,
+      "priority": "low"
+    }
+  }
+}

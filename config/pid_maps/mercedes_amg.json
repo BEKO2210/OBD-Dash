@@ -1,0 +1,233 @@
+{
+  "$schema": "apex-cortex-pid-map-v1",
+  "id": "mercedes_amg",
+  "name": "Mercedes-AMG Extended PIDs",
+  "description": "Mode 22 manufacturer-specific PIDs for Mercedes-AMG vehicles (M177/M178 engines)",
+  "mode": "22",
+  "ecu_header": "0x7E0",
+  "pids": {
+    "0x1004": {
+      "name": "transmission_temp",
+      "description": "MCT/automatic transmission oil temperature",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x1005": {
+      "name": "transmission_gear",
+      "description": "Current engaged gear number",
+      "formula": "A",
+      "unit": "gear",
+      "min": 0,
+      "max": 9,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "critical"
+    },
+    "0x1300": {
+      "name": "turbo_boost_pressure",
+      "description": "Turbo boost pressure (absolute)",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "bar",
+      "min": 0,
+      "max": 3.5,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x1301": {
+      "name": "turbo_boost_target",
+      "description": "Target turbo boost pressure",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "bar",
+      "min": 0,
+      "max": 3.5,
+      "bytes": 2,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x1310": {
+      "name": "intercooler_temp",
+      "description": "Charge air cooler outlet temperature",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 150,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "medium"
+    },
+    "0x2000": {
+      "name": "brake_pressure_front",
+      "description": "Brake pressure - front circuit",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "bar",
+      "min": 0,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2001": {
+      "name": "brake_pressure_rear",
+      "description": "Brake pressure - rear circuit",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "bar",
+      "min": 0,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2100": {
+      "name": "steering_angle",
+      "description": "Steering wheel angle",
+      "formula": "((A * 256) + B) / 10 - 3276.8",
+      "unit": "°",
+      "min": -900,
+      "max": 900,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x2200": {
+      "name": "lateral_acceleration",
+      "description": "Lateral acceleration (g-force)",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2201": {
+      "name": "longitudinal_acceleration",
+      "description": "Longitudinal acceleration (g-force)",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2300": {
+      "name": "yaw_rate",
+      "description": "Yaw rate",
+      "formula": "((A * 256) + B) / 100 - 327.68",
+      "unit": "°/s",
+      "min": -327.68,
+      "max": 327.67,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3000": {
+      "name": "wheel_speed_fl",
+      "description": "Wheel speed - front left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3001": {
+      "name": "wheel_speed_fr",
+      "description": "Wheel speed - front right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3002": {
+      "name": "wheel_speed_rl",
+      "description": "Wheel speed - rear left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3003": {
+      "name": "wheel_speed_rr",
+      "description": "Wheel speed - rear right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x4000": {
+      "name": "exhaust_gas_temp_bank1",
+      "description": "Exhaust gas temperature - Bank 1 pre-turbo",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 1100,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x4001": {
+      "name": "exhaust_gas_temp_bank2",
+      "description": "Exhaust gas temperature - Bank 2 pre-turbo",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 1100,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x5000": {
+      "name": "amg_drive_mode",
+      "description": "AMG Dynamic Select drive mode",
+      "formula": "A",
+      "unit": "mode",
+      "min": 0,
+      "max": 5,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium",
+      "enum_values": {
+        "0": "Comfort",
+        "1": "Sport",
+        "2": "Sport+",
+        "3": "Race",
+        "4": "Individual",
+        "5": "Slippery"
+      }
+    },
+    "0x5100": {
+      "name": "esp_status",
+      "description": "ESP intervention status",
+      "formula": "A",
+      "unit": "status",
+      "min": 0,
+      "max": 3,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high",
+      "enum_values": {
+        "0": "Off",
+        "1": "On",
+        "2": "Sport",
+        "3": "Intervening"
+      }
+    }
+  }
+}

@@ -1,0 +1,265 @@
+{
+  "$schema": "apex-cortex-pid-map-v1",
+  "id": "bmw_m",
+  "name": "BMW M Extended PIDs",
+  "description": "Mode 22 manufacturer-specific PIDs for BMW M vehicles (S58 engine, G80/G82 platform)",
+  "mode": "22",
+  "ecu_header": "0x7E0",
+  "pids": {
+    "0x0500": {
+      "name": "transmission_temp",
+      "description": "Automatic transmission fluid temperature",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x0502": {
+      "name": "transmission_gear",
+      "description": "Currently engaged gear",
+      "formula": "A",
+      "unit": "gear",
+      "min": 0,
+      "max": 10,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "critical"
+    },
+    "0x0503": {
+      "name": "gear_request",
+      "description": "Requested target gear",
+      "formula": "A",
+      "unit": "gear",
+      "min": 0,
+      "max": 10,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "medium"
+    },
+    "0x1050": {
+      "name": "turbo_boost_actual",
+      "description": "Actual charge pressure (absolute)",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "bar",
+      "min": 0,
+      "max": 3.5,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x1051": {
+      "name": "turbo_boost_target",
+      "description": "Target charge pressure",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "bar",
+      "min": 0,
+      "max": 3.5,
+      "bytes": 2,
+      "sample_rate_hz": 10,
+      "priority": "high"
+    },
+    "0x1060": {
+      "name": "wastegate_duty",
+      "description": "Wastegate duty cycle",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "medium"
+    },
+    "0x1070": {
+      "name": "intercooler_temp",
+      "description": "Charge air cooler temperature",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 150,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "medium"
+    },
+    "0x2040": {
+      "name": "brake_pressure",
+      "description": "Master cylinder brake pressure",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "bar",
+      "min": 0,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2050": {
+      "name": "brake_disc_temp_fl",
+      "description": "Brake disc temperature - front left (estimated)",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "°C",
+      "min": 0,
+      "max": 900,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x2051": {
+      "name": "brake_disc_temp_fr",
+      "description": "Brake disc temperature - front right (estimated)",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "°C",
+      "min": 0,
+      "max": 900,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x2100": {
+      "name": "steering_angle",
+      "description": "Steering wheel angle",
+      "formula": "((A * 256) + B) / 10 - 3276.8",
+      "unit": "°",
+      "min": -900,
+      "max": 900,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x2200": {
+      "name": "lateral_acceleration",
+      "description": "Lateral acceleration",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2201": {
+      "name": "longitudinal_acceleration",
+      "description": "Longitudinal acceleration",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2300": {
+      "name": "yaw_rate",
+      "description": "Yaw rate sensor",
+      "formula": "((A * 256) + B) / 100 - 327.68",
+      "unit": "°/s",
+      "min": -327.68,
+      "max": 327.67,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3000": {
+      "name": "wheel_speed_fl",
+      "description": "Wheel speed - front left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3001": {
+      "name": "wheel_speed_fr",
+      "description": "Wheel speed - front right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3002": {
+      "name": "wheel_speed_rl",
+      "description": "Wheel speed - rear left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3003": {
+      "name": "wheel_speed_rr",
+      "description": "Wheel speed - rear right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x4000": {
+      "name": "exhaust_gas_temp_pre_cat",
+      "description": "Exhaust gas temperature pre-catalytic converter",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 1100,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x5000": {
+      "name": "m_drive_mode",
+      "description": "M Drive mode selection",
+      "formula": "A",
+      "unit": "mode",
+      "min": 0,
+      "max": 4,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium",
+      "enum_values": {
+        "0": "Comfort",
+        "1": "Sport",
+        "2": "Sport+",
+        "3": "Track",
+        "4": "Efficient"
+      }
+    },
+    "0x5010": {
+      "name": "m_traction_level",
+      "description": "M Traction Control level (MDM steps)",
+      "formula": "A",
+      "unit": "level",
+      "min": 0,
+      "max": 10,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium"
+    },
+    "0x5020": {
+      "name": "dsc_status",
+      "description": "DSC / M Dynamic Mode status",
+      "formula": "A",
+      "unit": "status",
+      "min": 0,
+      "max": 3,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high",
+      "enum_values": {
+        "0": "DSC On",
+        "1": "MDM (M Dynamic Mode)",
+        "2": "DSC Off",
+        "3": "Intervening"
+      }
+    }
+  }
+}

@@ -1,0 +1,308 @@
+{
+  "$schema": "apex-cortex-pid-map-v1",
+  "id": "porsche",
+  "name": "Porsche Extended PIDs",
+  "description": "Mode 22 manufacturer-specific PIDs for Porsche vehicles (992 platform, 9A1 engine family)",
+  "mode": "22",
+  "ecu_header": "0x7E0",
+  "pids": {
+    "0x0100": {
+      "name": "transmission_temp",
+      "description": "PDK transmission oil temperature",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x0102": {
+      "name": "transmission_gear",
+      "description": "Currently engaged PDK gear",
+      "formula": "A",
+      "unit": "gear",
+      "min": 0,
+      "max": 9,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "critical"
+    },
+    "0x0103": {
+      "name": "clutch_1_status",
+      "description": "PDK clutch 1 engagement (odd gears)",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "medium"
+    },
+    "0x0104": {
+      "name": "clutch_2_status",
+      "description": "PDK clutch 2 engagement (even gears)",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "medium"
+    },
+    "0x0200": {
+      "name": "oil_pressure",
+      "description": "Engine oil pressure",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "bar",
+      "min": 0,
+      "max": 10,
+      "bytes": 2,
+      "sample_rate_hz": 5,
+      "priority": "critical"
+    },
+    "0x0210": {
+      "name": "oil_level",
+      "description": "Engine oil level",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 0.1,
+      "priority": "low"
+    },
+    "0x1100": {
+      "name": "individual_throttle_bank1",
+      "description": "Individual throttle body position - Bank 1",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x1101": {
+      "name": "individual_throttle_bank2",
+      "description": "Individual throttle body position - Bank 2",
+      "formula": "A / 2.55",
+      "unit": "%",
+      "min": 0,
+      "max": 100,
+      "bytes": 1,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x2040": {
+      "name": "brake_pressure_front",
+      "description": "Brake master cylinder pressure - front",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "bar",
+      "min": 0,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2041": {
+      "name": "brake_pressure_rear",
+      "description": "Brake master cylinder pressure - rear",
+      "formula": "((A * 256) + B) / 10",
+      "unit": "bar",
+      "min": 0,
+      "max": 200,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2100": {
+      "name": "steering_angle",
+      "description": "Steering wheel angle",
+      "formula": "((A * 256) + B) / 10 - 3276.8",
+      "unit": "°",
+      "min": -900,
+      "max": 900,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x2200": {
+      "name": "lateral_acceleration",
+      "description": "Lateral acceleration",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2201": {
+      "name": "longitudinal_acceleration",
+      "description": "Longitudinal acceleration",
+      "formula": "((A * 256) + B) / 1000 - 32.768",
+      "unit": "g",
+      "min": -3.0,
+      "max": 3.0,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "critical"
+    },
+    "0x2300": {
+      "name": "yaw_rate",
+      "description": "Yaw rate",
+      "formula": "((A * 256) + B) / 100 - 327.68",
+      "unit": "°/s",
+      "min": -327.68,
+      "max": 327.67,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3000": {
+      "name": "wheel_speed_fl",
+      "description": "Wheel speed - front left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3001": {
+      "name": "wheel_speed_fr",
+      "description": "Wheel speed - front right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3002": {
+      "name": "wheel_speed_rl",
+      "description": "Wheel speed - rear left",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x3003": {
+      "name": "wheel_speed_rr",
+      "description": "Wheel speed - rear right",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "km/h",
+      "min": 0,
+      "max": 350,
+      "bytes": 2,
+      "sample_rate_hz": 20,
+      "priority": "high"
+    },
+    "0x4000": {
+      "name": "exhaust_gas_temp_cyl1",
+      "description": "Exhaust gas temperature - Cylinder 1",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 1100,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x4005": {
+      "name": "exhaust_gas_temp_cyl6",
+      "description": "Exhaust gas temperature - Cylinder 6",
+      "formula": "((A * 256) + B) / 10 - 40",
+      "unit": "°C",
+      "min": -40,
+      "max": 1100,
+      "bytes": 2,
+      "sample_rate_hz": 2,
+      "priority": "high"
+    },
+    "0x5000": {
+      "name": "drive_mode",
+      "description": "Sport Chrono drive mode",
+      "formula": "A",
+      "unit": "mode",
+      "min": 0,
+      "max": 4,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium",
+      "enum_values": {
+        "0": "Normal",
+        "1": "Sport",
+        "2": "Sport+",
+        "3": "Track (Sport Response)",
+        "4": "Wet"
+      }
+    },
+    "0x5010": {
+      "name": "pasm_mode",
+      "description": "PASM damper mode",
+      "formula": "A",
+      "unit": "mode",
+      "min": 0,
+      "max": 2,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "medium",
+      "enum_values": {
+        "0": "Normal",
+        "1": "Sport",
+        "2": "Track"
+      }
+    },
+    "0x5020": {
+      "name": "psc_status",
+      "description": "Porsche Stability Control status",
+      "formula": "A",
+      "unit": "status",
+      "min": 0,
+      "max": 3,
+      "bytes": 1,
+      "sample_rate_hz": 10,
+      "priority": "high",
+      "enum_values": {
+        "0": "PSM On",
+        "1": "PSM Sport",
+        "2": "PSM Off",
+        "3": "Intervening"
+      }
+    },
+    "0x6000": {
+      "name": "rear_wing_angle",
+      "description": "Active rear wing angle (DRS/aero)",
+      "formula": "((A * 256) + B) / 100",
+      "unit": "°",
+      "min": -5,
+      "max": 25,
+      "bytes": 2,
+      "sample_rate_hz": 5,
+      "priority": "medium"
+    },
+    "0x6010": {
+      "name": "front_axle_lift",
+      "description": "Front axle lift system status",
+      "formula": "A",
+      "unit": "status",
+      "min": 0,
+      "max": 2,
+      "bytes": 1,
+      "sample_rate_hz": 1,
+      "priority": "low",
+      "enum_values": {
+        "0": "Normal",
+        "1": "Raised",
+        "2": "Transitioning"
+      }
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "name": "apex-cortex",
+  "version": "1.0.0",
+  "private": true,
+  "description": "APEX CORTEX - High-performance OBD-II racing dashboard",
+  "workspaces": [
+    "dashboard"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=dashboard",
+    "build": "npm run build --workspace=dashboard",
+    "preview": "npm run preview --workspace=dashboard"
+  },
+  "keywords": [
+    "obd2",
+    "racing",
+    "dashboard",
+    "telemetry"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@esbuild/linux-x64": "^0.27.4"
+  }
+}

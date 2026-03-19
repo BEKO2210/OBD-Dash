@@ -1,0 +1,77 @@
+{
+  "$schema": "apex-cortex-vehicle-profile-v1",
+  "id": "porsche_911_gt3_rs",
+  "make": "Porsche",
+  "model": "911 GT3 RS",
+  "year": 2023,
+  "variant": "992",
+  "engine": {
+    "engine_cc": 3996,
+    "cylinders": 6,
+    "displacement_l": 4.0,
+    "fuel_type": "gasoline",
+    "turbo": false,
+    "turbo_type": null,
+    "aspiration": "naturally_aspirated",
+    "compression_ratio": 13.3,
+    "max_power_kw": 386,
+    "max_power_rpm": 8500,
+    "max_torque_nm": 465,
+    "max_torque_rpm": 6300,
+    "redline_rpm": 9000,
+    "idle_rpm": 800,
+    "shift_recommend_rpm": 8800,
+    "rev_limit_rpm": 9200
+  },
+  "transmission": {
+    "transmission_type": "pdk_7",
+    "gears": 7,
+    "gear_ratios": [3.91, 2.29, 1.58, 1.18, 0.94, 0.79, 0.62],
+    "reverse_ratio": 3.55,
+    "final_drive": 3.09
+  },
+  "drivetrain": {
+    "drive_type": "rwd",
+    "differential_type": "electronic_limited_slip"
+  },
+  "dimensions": {
+    "curb_weight_kg": 1450,
+    "wheelbase_m": 2.457,
+    "track_width_front_m": 1.606,
+    "track_width_rear_m": 1.572,
+    "track_width_m": 1.589,
+    "cg_height_m": 0.44,
+    "frontal_area_m2": 2.06,
+    "drag_coefficient": 0.36
+  },
+  "wheels": {
+    "tire_circumference_mm": 1990,
+    "tire_front": "275/35 ZR20",
+    "tire_rear": "335/30 ZR21",
+    "wheel_diameter_front_in": 20,
+    "wheel_diameter_rear_in": 21
+  },
+  "fuel": {
+    "fuel_tank_liters": 64,
+    "fuel_type": "gasoline",
+    "octane_rating": 98
+  },
+  "brakes": {
+    "front_type": "carbon_ceramic",
+    "rear_type": "carbon_ceramic",
+    "front_diameter_mm": 408,
+    "rear_diameter_mm": 380
+  },
+  "obd": {
+    "protocol": "CAN_11bit_500k",
+    "supported_pids": "generic_obd2",
+    "manufacturer_pid_map": "porsche",
+    "fast_init": true,
+    "header_format": "standard"
+  },
+  "performance": {
+    "zero_to_100_s": 3.2,
+    "top_speed_kph": 296,
+    "quarter_mile_s": 10.9
+  }
+}

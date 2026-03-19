@@ -1,0 +1,77 @@
+{
+  "$schema": "apex-cortex-vehicle-profile-v1",
+  "id": "amg_c63_s",
+  "make": "Mercedes-AMG",
+  "model": "C 63 S",
+  "year": 2020,
+  "variant": "W205 Coupe",
+  "engine": {
+    "engine_cc": 3982,
+    "cylinders": 8,
+    "displacement_l": 4.0,
+    "fuel_type": "gasoline",
+    "turbo": true,
+    "turbo_type": "twin_turbo",
+    "aspiration": "forced_induction",
+    "compression_ratio": 8.6,
+    "max_power_kw": 375,
+    "max_power_rpm": 5500,
+    "max_torque_nm": 700,
+    "max_torque_rpm": 1750,
+    "redline_rpm": 7200,
+    "idle_rpm": 700,
+    "shift_recommend_rpm": 6800,
+    "rev_limit_rpm": 7500
+  },
+  "transmission": {
+    "transmission_type": "mct_7",
+    "gears": 7,
+    "gear_ratios": [4.38, 2.86, 1.92, 1.37, 1.00, 0.82, 0.73],
+    "reverse_ratio": 3.42,
+    "final_drive": 2.82
+  },
+  "drivetrain": {
+    "drive_type": "rwd",
+    "differential_type": "electronic_limited_slip"
+  },
+  "dimensions": {
+    "curb_weight_kg": 1770,
+    "wheelbase_m": 2.840,
+    "track_width_front_m": 1.584,
+    "track_width_rear_m": 1.577,
+    "track_width_m": 1.580,
+    "cg_height_m": 0.47,
+    "frontal_area_m2": 2.22,
+    "drag_coefficient": 0.32
+  },
+  "wheels": {
+    "tire_circumference_mm": 2030,
+    "tire_front": "255/35 R19",
+    "tire_rear": "285/30 R20",
+    "wheel_diameter_front_in": 19,
+    "wheel_diameter_rear_in": 20
+  },
+  "fuel": {
+    "fuel_tank_liters": 66,
+    "fuel_type": "gasoline",
+    "octane_rating": 98
+  },
+  "brakes": {
+    "front_type": "ventilated_disc",
+    "rear_type": "ventilated_disc",
+    "front_diameter_mm": 390,
+    "rear_diameter_mm": 360
+  },
+  "obd": {
+    "protocol": "CAN_11bit_500k",
+    "supported_pids": "generic_obd2",
+    "manufacturer_pid_map": "mercedes_amg",
+    "fast_init": true,
+    "header_format": "standard"
+  },
+  "performance": {
+    "zero_to_100_s": 3.9,
+    "top_speed_kph": 290,
+    "quarter_mile_s": 11.9
+  }
+}

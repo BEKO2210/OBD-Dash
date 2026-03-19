@@ -1,0 +1,77 @@
+{
+  "$schema": "apex-cortex-vehicle-profile-v1",
+  "id": "bmw_m3_g80",
+  "make": "BMW",
+  "model": "M3 Competition",
+  "year": 2023,
+  "variant": "G80",
+  "engine": {
+    "engine_cc": 2993,
+    "cylinders": 6,
+    "displacement_l": 3.0,
+    "fuel_type": "gasoline",
+    "turbo": true,
+    "turbo_type": "twin_turbo",
+    "aspiration": "forced_induction",
+    "compression_ratio": 9.3,
+    "max_power_kw": 375,
+    "max_power_rpm": 5500,
+    "max_torque_nm": 650,
+    "max_torque_rpm": 2750,
+    "redline_rpm": 7200,
+    "idle_rpm": 700,
+    "shift_recommend_rpm": 7000,
+    "rev_limit_rpm": 7400
+  },
+  "transmission": {
+    "transmission_type": "torque_converter_8",
+    "gears": 8,
+    "gear_ratios": [5.25, 3.36, 2.17, 1.72, 1.32, 1.00, 0.82, 0.64],
+    "reverse_ratio": 3.72,
+    "final_drive": 2.81
+  },
+  "drivetrain": {
+    "drive_type": "rwd",
+    "differential_type": "active_m_differential"
+  },
+  "dimensions": {
+    "curb_weight_kg": 1730,
+    "wheelbase_m": 2.857,
+    "track_width_front_m": 1.604,
+    "track_width_rear_m": 1.611,
+    "track_width_m": 1.607,
+    "cg_height_m": 0.46,
+    "frontal_area_m2": 2.18,
+    "drag_coefficient": 0.34
+  },
+  "wheels": {
+    "tire_circumference_mm": 2040,
+    "tire_front": "275/35 R19",
+    "tire_rear": "285/30 R20",
+    "wheel_diameter_front_in": 19,
+    "wheel_diameter_rear_in": 20
+  },
+  "fuel": {
+    "fuel_tank_liters": 59,
+    "fuel_type": "gasoline",
+    "octane_rating": 98
+  },
+  "brakes": {
+    "front_type": "ventilated_disc",
+    "rear_type": "ventilated_disc",
+    "front_diameter_mm": 380,
+    "rear_diameter_mm": 370
+  },
+  "obd": {
+    "protocol": "CAN_11bit_500k",
+    "supported_pids": "generic_obd2",
+    "manufacturer_pid_map": "bmw_m",
+    "fast_init": true,
+    "header_format": "standard"
+  },
+  "performance": {
+    "zero_to_100_s": 3.9,
+    "top_speed_kph": 290,
+    "quarter_mile_s": 11.8
+  }
+}

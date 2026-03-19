@@ -1,0 +1,115 @@
+{
+  "$schema": "apex-cortex-theme-v1",
+  "id": "race_dark",
+  "name": "Race Dark",
+  "description": "Dark carbon fiber look with high-contrast racing accents",
+  "mode": "dark",
+  "colors": {
+    "background": {
+      "primary": "#0d0e10",
+      "secondary": "#1a1b1f",
+      "tertiary": "#2a2c31",
+      "surface": "#1e2025",
+      "elevated": "#252830"
+    },
+    "foreground": {
+      "primary": "#e1e2e5",
+      "secondary": "#9ea1aa",
+      "muted": "#60646f",
+      "inverse": "#0d0e10"
+    },
+    "accent": {
+      "primary": "#ef4444",
+      "secondary": "#ffbe20",
+      "tertiary": "#3b82f6",
+      "success": "#22c55e",
+      "warning": "#f59e0b",
+      "danger": "#dc2626",
+      "info": "#06b6d4"
+    },
+    "gauge": {
+      "rpm_low": "#22c55e",
+      "rpm_mid": "#f59e0b",
+      "rpm_high": "#ef4444",
+      "rpm_redline": "#dc2626",
+      "speed": "#3b82f6",
+      "throttle": "#22c55e",
+      "brake": "#ef4444",
+      "boost": "#06b6d4",
+      "temp_cold": "#3b82f6",
+      "temp_normal": "#22c55e",
+      "temp_warm": "#f59e0b",
+      "temp_hot": "#ef4444",
+      "fuel_full": "#22c55e",
+      "fuel_low": "#f59e0b",
+      "fuel_critical": "#ef4444"
+    },
+    "border": {
+      "default": "#3e4149",
+      "subtle": "#2a2c31",
+      "strong": "#60646f"
+    },
+    "overlay": {
+      "backdrop": "rgba(13, 14, 16, 0.85)",
+      "tooltip": "rgba(30, 32, 37, 0.95)"
+    }
+  },
+  "typography": {
+    "font_family_display": "Orbitron, sans-serif",
+    "font_family_body": "Inter, system-ui, sans-serif",
+    "font_family_mono": "JetBrains Mono, Fira Code, monospace",
+    "font_size": {
+      "xs": "0.625rem",
+      "sm": "0.75rem",
+      "base": "0.875rem",
+      "lg": "1rem",
+      "xl": "1.25rem",
+      "2xl": "1.5rem",
+      "3xl": "2rem",
+      "4xl": "2.5rem",
+      "5xl": "3.5rem",
+      "gauge_value": "3rem",
+      "speedometer": "5rem",
+      "rpm_value": "4rem"
+    },
+    "font_weight": {
+      "normal": 400,
+      "medium": 500,
+      "semibold": 600,
+      "bold": 700,
+      "black": 900
+    }
+  },
+  "spacing": {
+    "gauge_gap": "0.5rem",
+    "panel_padding": "1rem",
+    "section_gap": "1.5rem"
+  },
+  "borders": {
+    "radius_sm": "0.25rem",
+    "radius_md": "0.5rem",
+    "radius_lg": "0.75rem",
+    "radius_xl": "1rem",
+    "radius_gauge": "9999px",
+    "width": "1px"
+  },
+  "effects": {
+    "glow_primary": "0 0 12px rgba(239, 68, 68, 0.4)",
+    "glow_accent": "0 0 12px rgba(255, 190, 32, 0.4)",
+    "glow_speed": "0 0 12px rgba(59, 130, 246, 0.4)",
+    "shadow_panel": "0 4px 24px rgba(0, 0, 0, 0.5)",
+    "shadow_elevated": "0 8px 32px rgba(0, 0, 0, 0.7)",
+    "backdrop_blur": "12px",
+    "transition_fast": "150ms ease",
+    "transition_normal": "250ms ease",
+    "transition_slow": "400ms ease"
+  },
+  "gauge_styles": {
+    "arc_width": 8,
+    "arc_background": "#2a2c31",
+    "needle_color": "#ef4444",
+    "tick_color": "#60646f",
+    "label_color": "#9ea1aa",
+    "value_color": "#e1e2e5"
+  }
+}

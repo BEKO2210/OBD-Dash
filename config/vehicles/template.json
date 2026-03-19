@@ -1,0 +1,77 @@
+{
+  "$schema": "apex-cortex-vehicle-profile-v1",
+  "id": "",
+  "make": "",
+  "model": "",
+  "year": 0,
+  "variant": "",
+  "engine": {
+    "engine_cc": 0,
+    "cylinders": 0,
+    "displacement_l": 0.0,
+    "fuel_type": "gasoline",
+    "turbo": false,
+    "turbo_type": null,
+    "aspiration": "naturally_aspirated",
+    "compression_ratio": 0.0,
+    "max_power_kw": 0,
+    "max_power_rpm": 0,
+    "max_torque_nm": 0,
+    "max_torque_rpm": 0,
+    "redline_rpm": 0,
+    "idle_rpm": 750,
+    "shift_recommend_rpm": 0,
+    "rev_limit_rpm": 0
+  },
+  "transmission": {
+    "transmission_type": "automatic",
+    "gears": 0,
+    "gear_ratios": [],
+    "reverse_ratio": 0.0,
+    "final_drive": 0.0
+  },
+  "drivetrain": {
+    "drive_type": "rwd",
+    "differential_type": "limited_slip"
+  },
+  "dimensions": {
+    "curb_weight_kg": 0,
+    "wheelbase_m": 0.0,
+    "track_width_front_m": 0.0,
+    "track_width_rear_m": 0.0,
+    "track_width_m": 0.0,
+    "cg_height_m": 0.0,
+    "frontal_area_m2": 0.0,
+    "drag_coefficient": 0.0
+  },
+  "wheels": {
+    "tire_circumference_mm": 0,
+    "tire_front": "",
+    "tire_rear": "",
+    "wheel_diameter_front_in": 0,
+    "wheel_diameter_rear_in": 0
+  },
+  "fuel": {
+    "fuel_tank_liters": 0,
+    "fuel_type": "gasoline",
+    "octane_rating": 98
+  },
+  "brakes": {
+    "front_type": "ventilated_disc",
+    "rear_type": "ventilated_disc",
+    "front_diameter_mm": 0,
+    "rear_diameter_mm": 0
+  },
+  "obd": {
+    "protocol": "auto",
+    "supported_pids": "generic_obd2",
+    "manufacturer_pid_map": null,
+    "fast_init": true,
+    "header_format": "standard"
+  },
+  "performance": {
+    "zero_to_100_s": 0.0,
+    "top_speed_kph": 0,
+    "quarter_mile_s": 0.0
+  }
+}
