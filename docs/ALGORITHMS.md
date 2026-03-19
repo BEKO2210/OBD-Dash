@@ -1,331 +1,592 @@
-# APEX CORTEX -- Algorithm Reference
+# APEX CORTEX -- Algorithm Documentation
 
-All algorithms implement the standard interface:
+## Overview
+
+APEX CORTEX processes raw OBD-II PID values through eight algorithm modules. Each module implements the same interface:
 
 ```python
-def calculate(snapshot: dict, vehicle: dict) -> dict:
+def calculate(snapshot: dict[str, Any], vehicle: dict[str, Any]) -> dict[str, Any]
 ```
 
-- `snapshot`: Current telemetry data (PID values, timestamps, GPS).
-- `vehicle`: Active vehicle profile (gear ratios, weight, engine specs).
-- Returns a dict of computed metrics. All values may be `None` if input data is missing.
+- **snapshot**: Current telemetry data including `pids` dict (keyed by hex PID code) and `timestamp`.
+- **vehicle**: Vehicle profile dict with specifications (mass, gear ratios, max power, etc.).
+- **Returns**: Dict of computed metrics. All values are `None` when input data is insufficient.
 
-Each algorithm uses module-level state for tracking history and trends. Call `reset_state()` to clear state between sessions or tests.
+Every algorithm handles missing or `None` PID values gracefully. Partial results are returned rather than failing entirely.
 
 ---
 
-## 1. Performance (`core/algorithms/performance.py`)
+## 1. Performance Algorithm
 
-Estimates engine power and torque from OBD-II data.
+**Module**: `core/algorithms/performance.py`
 
-### Key Formulas
+Estimates engine power, torque, and efficiency from OBD-II data.
 
+### Inputs
+
+| PID    | Name                   | Required | Fallback                           |
+|--------|------------------------|----------|------------------------------------|
+| `0x0C` | Engine RPM             | Yes      | --                                 |
+| `0x04` | Engine Load            | Optional | Used when torque PIDs unavailable  |
+| `0x62` | Actual Engine Torque % | Optional | Primary torque source              |
+| `0x63` | Reference Torque (Nm)  | Optional | Primary torque source              |
+
+**Vehicle profile fields**: `max_torque_nm`, `max_power_kw`
+
+### Formulas
+
+**Torque estimation (primary)**:
 ```
-Power [kW] = (Torque [Nm] * RPM) / 9549
-Power [HP] = Power [kW] * 1.341
+torque_nm = (actual_torque_pct / 100) * reference_torque_nm
+```
+Where `actual_torque_pct` is PID 0x62 and `reference_torque_nm` is PID 0x63.
 
-Torque [Nm] = (actual_torque_pct / 100) * reference_torque
-Torque Efficiency = actual_torque_pct / driver_demand_torque_pct * 100
+**Torque estimation (fallback)**:
+```
+torque_nm = (engine_load / 100) * max_torque_nm
+```
+Where `engine_load` is PID 0x04 and `max_torque_nm` comes from the vehicle profile.
+
+**Power estimation**:
+```
+power_kw = (torque_nm * rpm) / 9549
+power_hp = power_kw * 1.34102
+```
+
+**Power delivery score**:
+```
+power_delivery_score = (power_kw / max_power_kw) * 100
+```
+Clamped to 0--100 range.
+
+**Torque efficiency**:
+```
+torque_efficiency = estimated_torque_nm / reference_torque_nm
 ```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `power_kw` | float | Estimated power in kilowatts |
-| `power_hp` | float | Estimated power in horsepower |
-| `torque_nm` | float | Estimated torque in Newton-metres |
-| `torque_efficiency` | float | How much of demanded torque is delivered (0--100%) |
-| `engine_load_pct` | float | Calculated engine load percentage |
+| Key                    | Unit | Range      | Description                               |
+|------------------------|------|------------|-------------------------------------------|
+| `estimated_torque_nm`  | Nm   | 0+         | Estimated engine torque                   |
+| `estimated_power_kw`   | kW   | 0+         | Estimated power output                    |
+| `estimated_power_hp`   | HP   | 0+         | Estimated power output (imperial)         |
+| `engine_load_percent`  | %    | 0--100     | Direct from PID 0x04                      |
+| `power_delivery_score` | %    | 0--100     | Current power as percentage of vehicle max|
+| `torque_efficiency`    | ratio| 0--1+      | Actual vs reference torque ratio          |
+
+### Limitations
+
+- Torque estimation from engine load (fallback path) is approximate. Engine load correlates with torque but is not a direct measurement.
+- Power calculation assumes no drivetrain losses. Actual wheel power is lower due to transmission, differential, and tire losses (typically 10--15% for RWD, 15--20% for AWD).
+- PIDs 0x62 and 0x63 are not universally supported. Many vehicles only provide engine load (0x04).
 
 ---
 
-## 2. Dynamics (`core/algorithms/dynamics.py`)
+## 2. Dynamics Algorithm
 
-G-force estimation, weight transfer, and yaw rate calculation.
+**Module**: `core/algorithms/dynamics.py`
 
-### Key Formulas
+Estimates G-forces and weight transfer from vehicle speed changes.
 
+### Inputs
+
+| PID    | Name              | Required | Notes                     |
+|--------|-------------------|----------|---------------------------|
+| `0x0D` | Vehicle Speed     | Yes      | Used for acceleration calc|
+| `0x11` | Throttle Position | Optional | Used for lateral G estimate|
+
+**Vehicle profile fields**: `curb_weight_kg`, `cg_height_m`, `wheelbase_m`, `track_width_m`
+
+### Formulas
+
+**Longitudinal acceleration**:
 ```
-G_longitudinal = delta_speed_ms / delta_time / 9.81
-G_lateral = estimated from steering angle + speed, or from accelerometer if available
+acceleration_ms2 = (speed_current - speed_previous) / delta_time
+g_longitudinal = acceleration_ms2 / 9.81
+```
+Positive values indicate acceleration, negative values indicate deceleration.
 
-Weight Transfer Front [N] = (mass * g_long * 9.81 * cg_height) / wheelbase
-Weight Transfer Lateral [N] = (mass * g_lat * 9.81 * cg_height) / track_width
+**Lateral G-force estimation** (heuristic):
+```
+expected_accel = (throttle / 100) * 3.0
+residual = |acceleration_ms2 - expected_accel|
+g_lateral_raw = residual / 9.81
+g_lateral = 0.3 * g_lateral_raw + 0.7 * g_lateral_previous
+```
+This is a best-effort estimate without IMU or yaw-rate sensor data. It detects lateral forces by comparing actual acceleration against throttle-expected acceleration. An exponential moving average (alpha=0.3) smooths the output.
+
+**Longitudinal weight transfer**:
+```
+weight_transfer_front_kg = (mass * acceleration_ms2 * cg_height) / wheelbase
+```
+Positive values mean weight transferring forward (braking), negative means rearward (acceleration).
+
+**Lateral weight transfer**:
+```
+weight_transfer_lateral_kg = (mass * g_lateral * 9.81 * cg_height) / track_width
 ```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `g_longitudinal` | float | Longitudinal G-force (positive = acceleration) |
-| `g_lateral` | float | Lateral G-force (positive = right turn) |
-| `g_vertical` | float | Vertical G-force |
-| `g_combined` | float | Combined G-force magnitude |
-| `weight_transfer_front_n` | float | Weight transfer to front axle (N) |
-| `weight_transfer_lateral_n` | float | Lateral weight transfer (N) |
+| Key                          | Unit  | Description                              |
+|------------------------------|-------|------------------------------------------|
+| `g_longitudinal`             | G     | Longitudinal G-force                     |
+| `g_lateral`                  | G     | Estimated lateral G-force                |
+| `weight_transfer_front_kg`   | kg    | Longitudinal weight transfer to front    |
+| `weight_transfer_lateral_kg` | kg    | Lateral weight transfer                  |
+| `speed_ms`                   | m/s   | Current speed in meters per second       |
+| `acceleration_ms2`           | m/s^2 | Raw longitudinal acceleration            |
+
+### Limitations
+
+- Lateral G estimation is a heuristic. Without a dedicated IMU (accelerometer + gyroscope), true lateral force cannot be measured from OBD-II alone.
+- Speed resolution is limited to 1 km/h (PID 0x0D is a single byte). This introduces quantization noise in acceleration calculations.
+- The algorithm maintains a 50-sample speed history buffer. On first start, results are unavailable until at least 2 samples are collected.
+- Weight transfer calculations assume a rigid body model with uniform mass distribution.
 
 ---
 
-## 3. Fuel (`core/algorithms/fuel.py`)
+## 3. Fuel Algorithm
 
-Air-fuel ratio analysis, consumption, range estimation, and pit window calculation.
+**Module**: `core/algorithms/fuel.py`
 
-### Key Formulas
+Calculates air-fuel ratio, fuel consumption, range, and pit window.
 
+### Inputs
+
+| PID    | Name               | Required | Notes                       |
+|--------|--------------------|----------|-----------------------------|
+| `0x14` | O2 Sensor 1 Voltage| Optional | Used for AFR calculation    |
+| `0x10` | MAF Air Flow Rate  | Optional | Used for consumption calc   |
+| `0x0D` | Vehicle Speed      | Optional | Used for L/100km            |
+| `0x2F` | Fuel Tank Level    | Optional | Used for range estimation   |
+
+**Vehicle profile fields**: `fuel_density_g_l` (default: 750 g/L for gasoline), `fuel_tank_liters`, `lap_distance_km`
+
+### Formulas
+
+**Lambda from O2 voltage** (narrowband approximation):
 ```
-AFR = MAF_rate / fuel_flow_rate
-Lambda = AFR / 14.7  (stoichiometric for gasoline)
+lambda = 1.0 + (0.45 - o2_voltage) * 2.222
+lambda = clamp(lambda, 0.5, 2.0)
+```
+This maps: 0V -> ~2.0 (very lean), 0.45V -> 1.0 (stoichiometric), 0.9V -> ~0.0 (very rich).
 
-Fuel Consumption [L/100km] = (MAF_g_s * 3600) / (fuel_density * speed_kmh * 10)
-  where fuel_density_gasoline = 750 g/L
+**Air-fuel ratio**:
+```
+AFR = lambda * 14.7
+```
+Where 14.7 is the stoichiometric AFR for gasoline.
 
-Range [km] = fuel_remaining_L / (consumption_L_per_km)
-Pit Window [laps] = floor(fuel_remaining_L / fuel_per_lap_L)
+**AFR classification**:
+| Range         | Status         | Racing Context                          |
+|---------------|----------------|-----------------------------------------|
+| AFR > 15.0    | `lean`         | Risk of detonation under load           |
+| 14.2 -- 15.0  | `stoich`       | Maximum catalytic efficiency            |
+| 12.5 -- 14.2  | `optimal_race` | Best power with adequate cooling        |
+| AFR < 12.5    | `rich`         | Excess fuel, power loss, carbon buildup |
+
+**Fuel consumption** (instantaneous):
+```
+fuel_consumption_l100km = (MAF_g_s * 3600) / (fuel_density_g_L * speed_km_h * 10)
 ```
 
-### AFR Status Zones
+**Range remaining**:
+```
+remaining_liters = fuel_tank_liters * (fuel_level_pct / 100)
+range_km = (remaining_liters / fuel_consumption_l100km) * 100
+```
 
-| AFR Range | Status | Description |
-|-----------|--------|-------------|
-| < 11.5 | RICH_DANGER | Dangerously rich, risk of fouling |
-| 11.5--12.5 | RICH | Rich mixture (power mode) |
-| 12.5--13.5 | OPTIMAL_RACE | Optimal for peak power |
-| 13.5--15.0 | STOICH | Near stoichiometric (efficient) |
-| 15.0--16.5 | LEAN | Lean mixture (economy) |
-| > 16.5 | LEAN_DANGER | Dangerously lean, risk of detonation |
+**Pit window**:
+```
+pit_window_laps = range_km / lap_distance_km
+```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `afr` | float | Air-fuel ratio |
-| `lambda_val` | float | Lambda value (1.0 = stoichiometric) |
-| `afr_status` | str | AFR zone classification |
-| `consumption_l100km` | float | Fuel consumption in L/100km |
-| `range_km` | float | Estimated remaining range |
-| `pit_window_laps` | int | Estimated laps until pit stop needed |
+| Key                       | Unit    | Description                           |
+|---------------------------|---------|---------------------------------------|
+| `lambda_val`              | ratio   | Lambda value from O2 sensor           |
+| `afr`                     | ratio   | Air-fuel ratio                        |
+| `afr_status`              | string  | lean / stoich / optimal_race / rich   |
+| `fuel_consumption_l100km` | L/100km | Instantaneous fuel consumption        |
+| `range_remaining_km`      | km      | Estimated range on remaining fuel     |
+| `pit_window_laps`         | laps    | Estimated laps before pit stop needed |
+
+### Limitations
+
+- Narrowband O2 sensors only provide accurate readings near stoichiometric. Lambda estimates at extremes (very lean/rich) are approximate.
+- Fuel consumption calculation requires MAF sensor data. Vehicles without MAF (speed-density systems) cannot provide this metric.
+- Range estimation assumes constant driving conditions. Actual range varies with driving style.
+- Fuel level PID (0x2F) updates slowly and may have poor resolution (some vehicles report in 10% increments).
 
 ---
 
-## 4. Braking (`core/algorithms/braking.py`)
+## 4. Braking Algorithm
 
-Brake performance analysis, stopping distance, and fade detection.
+**Module**: `core/algorithms/braking.py`
 
-### Key Formulas
+Measures braking performance and detects brake fade.
 
+### Inputs
+
+| PID    | Name              | Required | Notes                          |
+|--------|-------------------|----------|--------------------------------|
+| `0x0D` | Vehicle Speed     | Yes      | Used for deceleration calc     |
+| `0x11` | Throttle Position | Optional | Used to confirm braking intent |
+
+**Vehicle profile fields**: `curb_weight_kg`
+
+### Formulas
+
+**Braking detection**:
 ```
-Deceleration [m/s^2] = abs(delta_speed_ms) / delta_time
-  (only computed when vehicle is decelerating and throttle < 10%)
-
-Brake Force [N] = mass_kg * deceleration_ms2
-BPI (Brake Performance Index) = (deceleration / 9.81) * 100
-Stopping Distance [m] = speed_ms^2 / (2 * deceleration)
+is_braking = (deceleration > 0.5 m/s^2) AND (throttle < 10%)
 ```
 
-### Brake Fade Detection
+**Deceleration**:
+```
+deceleration_ms2 = (speed_previous - speed_current) / delta_time
+```
+Note: this is the magnitude of deceleration (positive when slowing down).
 
-Fade is detected when:
-1. Coolant temperature exceeds 100 C during braking (thermal fade risk).
-2. Current deceleration drops below 70% of the session peak while braking intensity remains high (performance fade).
+**Brake force**:
+```
+brake_force_N = curb_weight_kg * deceleration_ms2
+```
+
+**Brake Performance Index (BPI)**:
+```
+BPI = (deceleration_ms2 / 9.81) * 100
+```
+A BPI of 100 means decelerating at 1G. Performance cars typically achieve BPI of 80--120.
+
+**Stopping distance** (theoretical at current deceleration):
+```
+stopping_distance_m = speed_ms^2 / (2 * deceleration_ms2)
+```
+
+**Brake fade detection**:
+```
+fade_warning = (event_count > 10) AND
+               (current_decel > 1.0 m/s^2) AND
+               (current_decel < peak_decel * 0.70)
+```
+Brake fade is flagged when the current deceleration drops below 70% of the session's peak deceleration, after at least 10 braking events. This indicates the brakes are losing effectiveness due to heat.
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `deceleration_ms2` | float | Current deceleration magnitude (m/s^2) |
-| `brake_force_n` | float | Estimated brake force (Newtons) |
-| `bpi` | float | Brake performance index (0--100+) |
-| `stopping_distance_m` | float | Theoretical stopping distance at current decel |
-| `brake_fade_warning` | bool | True if brake fade is detected |
-| `is_braking` | bool | True if vehicle is currently braking |
+| Key                   | Unit  | Description                              |
+|-----------------------|-------|------------------------------------------|
+| `deceleration_ms2`    | m/s^2 | Current deceleration magnitude           |
+| `brake_force_n`       | N     | Estimated total brake force              |
+| `bpi`                 | score | Brake Performance Index (decel/g * 100)  |
+| `stopping_distance_m` | m     | Theoretical stopping distance            |
+| `brake_fade_warning`  | bool  | True if fade detected                    |
+| `is_braking`          | bool  | True if currently braking                |
+
+### Limitations
+
+- Deceleration is derived from vehicle speed changes, not from a direct brake pressure sensor.
+- Brake fade detection uses a simple threshold model. Gradual fade over many laps may not trigger the warning until the drop is significant.
+- Stopping distance assumes constant deceleration and flat, dry road surface.
+- The algorithm maintains a 100-sample history buffer. Session peak deceleration resets when `reset_state()` is called.
 
 ---
 
-## 5. Traction (`core/algorithms/traction.py`)
+## 5. Traction Algorithm
 
-Tyre slip ratio estimation, stability classification, and ESP intervention detection.
+**Module**: `core/algorithms/traction.py`
 
-### Slip Ratio
+Estimates tire slip, traction state, and detects stability interventions.
 
+### Inputs
+
+| PID    | Name              | Required | Notes                          |
+|--------|-------------------|----------|--------------------------------|
+| `0x0C` | Engine RPM        | Yes      | Used with gear ratios for wheel speed estimate |
+| `0x0D` | Vehicle Speed     | Yes      | GPS/wheel speed reference      |
+| `0x11` | Throttle Position | Optional | Context for traction events    |
+| `0x04` | Engine Load       | Optional | Context for traction events    |
+
+**Vehicle profile fields**: `gear_ratios[]`, `final_drive_ratio`, `tire_diameter_m`
+
+### Formulas
+
+**Estimated wheel speed** (from engine RPM and gearing):
 ```
-wheel_rpm = engine_rpm / (gear_ratio * final_drive)
-wheel_speed_ms = wheel_rpm * tire_circumference_m / 60
-
-slip_ratio = (wheel_speed - vehicle_speed) / max(wheel_speed, vehicle_speed)
+wheel_rpm = engine_rpm / (gear_ratio * final_drive_ratio)
+wheel_speed_ms = wheel_rpm * pi * tire_diameter_m / 60
 ```
+The current gear is inferred by finding the gear ratio that produces the closest match to the actual vehicle speed.
 
-A slip ratio of 0 means no slip (pure grip). Values above 0.05 indicate the tyres are breaking traction.
+**Slip ratio**:
+```
+slip_ratio = (wheel_speed_ms - vehicle_speed_ms) / max(vehicle_speed_ms, 0.1)
+```
+- Slip ratio ~0: no slip (normal driving)
+- Slip ratio > 0: wheel spin (acceleration traction loss)
+- Slip ratio < 0: wheel lock (braking traction loss)
 
-### Stability States
-
-| State | Slip Ratio | Condition |
-|-------|-----------|-----------|
-| STABLE | < 0.05 | Normal grip |
-| MILD_SLIP | 0.05--0.15 | Light traction loss |
-| OVERSTEER | 0.15--0.30 | Rear slides out (high throttle + lateral G) |
-| UNDERSTEER | 0.15--0.30 | Front pushes wide (low throttle + lateral G) |
-| SPINNING | > 0.30 | Significant traction loss |
-
-### ESP Intervention Detection
-
-Heuristic: a sudden RPM drop (> 500 rpm) while throttle remains high (> 50%) suggests the ESP or traction control system has intervened by cutting engine power.
+**Stability state classification**:
+| Slip Ratio         | State         | Description                     |
+|--------------------|---------------|---------------------------------|
+| |slip| < 0.05      | `stable`      | Normal traction                 |
+| 0.05 <= |slip| < 0.15 | `marginal` | Approaching traction limit      |
+| |slip| >= 0.15     | `unstable`    | Significant traction loss       |
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `slip_ratio` | float | Estimated tyre slip ratio (0--1) |
-| `stability_state` | str | STABLE, MILD_SLIP, OVERSTEER, UNDERSTEER, or SPINNING |
-| `esp_intervention` | bool | True if ESP intervention is detected |
+| Key               | Unit   | Description                          |
+|-------------------|--------|--------------------------------------|
+| `slip_ratio`      | ratio  | Tire slip ratio                      |
+| `stability_state` | string | stable / marginal / unstable         |
+| `estimated_gear`  | int    | Estimated current gear number        |
+| `wheel_speed_ms`  | m/s    | Estimated driven wheel speed         |
+
+### Limitations
+
+- Gear estimation can be inaccurate during gear changes, clutch slip, or torque converter slip.
+- Without individual wheel speed sensors, only drive-wheel average slip can be estimated.
+- OBD-II vehicle speed (PID 0x0D) is typically derived from a non-driven wheel or transmission output shaft, introducing measurement differences.
 
 ---
 
-## 6. Thermal (`core/algorithms/thermal.py`)
+## 6. Thermal Algorithm
 
-Thermal Risk Score, temperature trend analysis, and overheat prediction.
+**Module**: `core/algorithms/thermal.py`
 
-### Thermal Risk Score (TRS)
+Scores thermal risk across engine subsystems and predicts overheating.
 
+### Inputs
+
+| PID    | Name                      | Required | Notes                    |
+|--------|---------------------------|----------|--------------------------|
+| `0x05` | Engine Coolant Temperature| Optional | Primary thermal indicator|
+| `0x5C` | Engine Oil Temperature    | Optional | Secondary thermal input  |
+| `0x0F` | Intake Air Temperature    | Optional | Ambient heat soak        |
+| `0x46` | Ambient Air Temperature   | Optional | Environmental baseline   |
+
+**Vehicle profile fields**: `coolant_temp_normal`, `coolant_temp_warning`, `oil_temp_normal`, `oil_temp_warning`
+
+### Formulas
+
+**Thermal risk score** (0.0 -- 1.0):
 ```
-trs = (coolant/120) * 0.35
-    + (oil/150) * 0.25
-    + (iat/60) * 0.20
-    + (brake_est/400) * 0.20
+coolant_risk = normalize(coolant_temp, normal_range, warning_range)
+oil_risk     = normalize(oil_temp, normal_range, warning_range)
+iat_risk     = normalize(iat, ambient + 20, ambient + 60)
 
-Each component is clamped to [0, 1] before applying its weight.
+thermal_risk = max(coolant_risk * 0.5 + oil_risk * 0.3 + iat_risk * 0.2)
 ```
 
-Brake temperature is estimated from coolant temperature and engine load when no dedicated sensor is available.
+Where `normalize()` maps a temperature into 0.0 (at or below normal) to 1.0 (at or above warning threshold).
 
-### TRS Status Levels
+**Trend analysis**:
+```
+trend = "rising"  if temp_delta > +1.0 deg C over last 30 seconds
+trend = "falling" if temp_delta < -1.0 deg C over last 30 seconds
+trend = "stable"  otherwise
+```
 
-| TRS Range | Status | Action |
-|-----------|--------|--------|
-| < 0.50 | SAFE | Normal operation |
-| 0.50--0.70 | WATCH | Monitor temperatures |
-| 0.70--0.85 | WARNING | Reduce intensity |
-| >= 0.85 | CRITICAL | Cool-down lap required |
-
-### Overheat Prediction
-
-Uses linear regression over the most recent temperature samples to compute `coolant_trend_c_per_s` (degrees Celsius per second). If the trend is positive, `predicted_overheat_sec` estimates how many seconds until coolant reaches the critical threshold of 120 C.
+**Overheat prediction**:
+```
+if trend == "rising" and rate > 0:
+    time_to_warning = (warning_temp - current_temp) / rate_per_second
+```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `trs` | float | Thermal risk score (0.0--1.0+) |
-| `trs_status` | str | SAFE, WATCH, WARNING, or CRITICAL |
-| `coolant_trend_c_per_s` | float | Coolant temperature slope (C/s) |
-| `oil_trend_c_per_s` | float | Oil temperature slope (C/s) |
-| `predicted_overheat_sec` | float | Seconds until coolant reaches 120 C (or None) |
-| `coolant_temp_c` | float | Current coolant temperature |
-| `oil_temp_c` | float | Current oil temperature |
-| `iat_temp_c` | float | Current intake air temperature |
+| Key                    | Unit    | Description                           |
+|------------------------|---------|---------------------------------------|
+| `risk_score`           | 0--1    | Combined thermal risk score           |
+| `coolant_risk`         | 0--1    | Coolant-specific risk                 |
+| `oil_risk`             | 0--1    | Oil-specific risk                     |
+| `trend`                | string  | rising / stable / falling             |
+| `time_to_warning_sec`  | seconds | Predicted time until warning temp     |
+| `overheat_warning`     | bool    | True if risk_score > 0.8             |
+
+### Limitations
+
+- Temperature sensors have slow response times (especially oil temperature).
+- Risk score weighting (50% coolant, 30% oil, 20% IAT) is a general-purpose calibration. Track-specific tuning may be needed.
+- Overheat prediction assumes linear temperature rise, which is not always accurate (cooling system behavior is non-linear).
 
 ---
 
-## 7. Shift Advisor (`core/algorithms/shift_advisor.py`)
+## 7. Shift Advisor Algorithm
 
-Gear estimation, optimal shift point calculation, and missed-shift tracking.
+**Module**: `core/algorithms/shift_advisor.py`
 
-### Gear Estimation
+Recommends optimal shift points based on engine RPM and estimated power curve.
 
+### Inputs
+
+| PID    | Name         | Required | Notes                          |
+|--------|--------------|----------|--------------------------------|
+| `0x0C` | Engine RPM   | Yes      | Current RPM for shift decision |
+| `0x0D` | Vehicle Speed| Optional | Context for gear estimation    |
+| `0x11` | Throttle     | Optional | Only advise under load         |
+
+**Vehicle profile fields**: `redline_rpm`, `optimal_shift_rpm`, `gear_ratios[]`, `power_band_start_rpm`, `power_band_end_rpm`
+
+### Formulas
+
+**Shift recommendation**:
 ```
-wheel_rpm = (speed_ms * 60) / tire_circumference_m
-
-For each gear ratio:
-    expected_engine_rpm = wheel_rpm * gear_ratio * final_drive
-
-The gear whose expected RPM is closest to actual RPM (within 15% tolerance) is selected.
+if rpm >= redline_rpm:
+    action = "SHIFT NOW" (urgent)
+elif rpm >= optimal_shift_rpm:
+    action = "SHIFT" (recommended)
+elif rpm >= power_band_start:
+    action = "HOLD" (in power band)
+else:
+    action = "DOWNSHIFT" (below power band, if throttle > 50%)
 ```
 
-### Optimal Shift RPM
-
+**Gear efficiency**:
 ```
-optimal_shift_rpm = (peak_torque_rpm * current_gear_ratio) / next_gear_ratio
+gear_efficiency = 1.0 if power_band_start <= rpm <= power_band_end
+gear_efficiency = rpm / power_band_start  (if below power band)
+gear_efficiency = power_band_end / rpm    (if above power band)
 ```
 
-This formula ensures the engine lands at peak-torque RPM after the upshift, maximizing acceleration. The value is clamped to not exceed redline.
-
-### Gear Efficiency Score
-
-A 0--100 score indicating how well the current RPM utilizes the engine's torque band. 100 = at peak torque RPM. Score decreases linearly as RPM moves away from the optimal band.
-
-### Missed Shift Detection
-
-A missed shift is counted when RPM exceeds the redline. The counter increments once per redline crossing event.
+**Missed shift detection**:
+```
+missed_shift = rpm exceeded redline_rpm for more than 0.5 seconds
+```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `estimated_gear` | int | Current gear (1-based, None if unknown) |
-| `optimal_shift_rpm` | float | RPM at which to upshift |
-| `shift_now` | bool | True if RPM >= optimal shift point |
-| `gear_efficiency_score` | float | Gear utilization score (0--100) |
-| `missed_shift_count` | int | Total missed shifts this session |
+| Key                  | Unit   | Description                          |
+|----------------------|--------|--------------------------------------|
+| `action`             | string | SHIFT NOW / SHIFT / HOLD / DOWNSHIFT |
+| `optimal_shift_rpm`  | rpm    | Recommended shift point              |
+| `gear_efficiency`    | 0--1   | How well the current RPM uses the power band |
+| `missed_shift_count` | int    | Session total of missed shifts       |
+| `current_gear`       | int    | Estimated current gear               |
+
+### Limitations
+
+- Optimal shift RPM is taken from the vehicle profile, not calculated from a dyno-measured torque curve. For best results, set this value based on your vehicle's actual power peak.
+- Shift detection during rapid sequential shifts may lag due to PID polling rate.
+- Automatic/DCT transmissions will show shift recommendations even though the transmission manages its own shift points. Consider the advisor informational in these cases.
 
 ---
 
-## 8. Lap Timer (`core/algorithms/lap_timer.py`)
+## 8. Lap Timer Algorithm
 
-GPS-based lap and sector detection, timing, and delta calculations.
+**Module**: `core/algorithms/lap_timer.py`
 
-### Lap Detection
+Provides lap and sector timing with delta-to-best calculations.
 
-Uses GPS coordinates (`gps_lat`, `gps_lon`) and a configured start/finish point. A lap crossing is detected when the vehicle enters a radius around the start/finish point (default: 25 metres). A minimum lap time of 10 seconds prevents false triggers.
+### Inputs
 
-### Configuration
+| Source            | Required | Notes                                  |
+|-------------------|----------|----------------------------------------|
+| GPS coordinates   | Optional | Primary lap trigger (start/finish line)|
+| Manual trigger    | Optional | Button press for lap mark              |
+| Speed + distance  | Optional | Odometer-based lap detection           |
 
-```python
-from core.algorithms import lap_timer
+**Vehicle profile fields**: `lap_distance_km`, `sector_distances_km[]`
 
-lap_timer.configure(
-    start_finish_lat=50.3356,
-    start_finish_lon=6.9475,
-    sector_waypoints=[
-        (50.3340, 6.9500),  # Sector 1->2 boundary
-        (50.3320, 6.9450),  # Sector 2->3 boundary
-    ],
-    crossing_radius_m=25.0,
-)
+### Formulas
+
+**Lap time**:
+```
+lap_time = lap_end_timestamp - lap_start_timestamp
 ```
 
-### Delta Calculation
+**Delta to best**:
+```
+delta = current_elapsed - best_lap_elapsed_at_same_distance
+```
+Negative delta means the current lap is ahead of the best lap. Positive delta means behind.
 
-- `delta_to_best_ms`: Difference between current lap elapsed time and the session best at the same point. Negative = ahead of best.
-- `sector_deltas`: Per-sector time differences versus the best lap's sector times.
+**Sector times**:
+```
+sector_time[n] = sector_end_timestamp - sector_start_timestamp
+```
+
+**Predicted lap time**:
+```
+if sector_1_complete:
+    predicted = sector_1_time + best_remaining_sectors_time
+```
 
 ### Outputs
 
-| Key | Type | Description |
-|-----|------|-------------|
-| `current_lap` | int | Current lap number |
-| `current_sector` | int | Current sector index (0-based) |
-| `lap_time_ms` | float | Elapsed time of current lap (ms) |
-| `last_lap_time_ms` | float | Most recently completed lap time (ms) |
-| `delta_to_best_ms` | float | Delta vs session best (negative = faster) |
-| `session_best_ms` | float | Session best lap time (ms) |
-| `sector_times` | list[float] | Current lap sector times (ms) |
-| `sector_deltas` | list[float] | Sector deltas vs best lap |
-| `total_laps` | int | Total completed laps |
+| Key                  | Unit    | Description                          |
+|----------------------|---------|--------------------------------------|
+| `current_lap_time`   | seconds | Elapsed time on current lap          |
+| `last_lap_time`      | seconds | Most recent completed lap time       |
+| `best_lap_time`      | seconds | Session best lap time                |
+| `delta_to_best`      | seconds | Current delta vs best lap            |
+| `lap_count`          | int     | Number of completed laps             |
+| `sector_times`       | list    | Current lap sector times             |
+| `predicted_lap_time` | seconds | Predicted lap time based on sectors  |
+
+### Limitations
+
+- Without GPS, lap detection relies on manual triggers or distance estimation from vehicle speed integration (subject to drift).
+- Delta calculation requires at least one completed lap for comparison.
+- Sector timing requires sector distances defined in the vehicle profile or track configuration.
+- Speed-integrated distance accumulates error over time (~2--5% per lap) due to PID 0x0D resolution.
+
+---
+
+## Algorithm Dispatch Flow
+
+All algorithms are executed in sequence on each telemetry snapshot:
+
+```
+telemetry snapshot arrives (10 Hz)
+    |
+    v
+┌──────────────────────────────┐
+│  Algorithm Dispatcher        │
+│  core/algorithms/__init__.py │
+│                              │
+│  1. performance.calculate()  │
+│  2. dynamics.calculate()     │
+│  3. fuel.calculate()         │
+│  4. braking.calculate()      │
+│  5. traction.calculate()     │
+│  6. thermal.calculate()      │
+│  7. shift_advisor.calculate()│
+│  8. lap_timer.calculate()    │
+└──────────────┬───────────────┘
+               |
+               v
+merged results dict -> WebSocket broadcast
+```
+
+Total algorithm execution time target: < 5ms per snapshot (to maintain 10 Hz without frame drops).
 
 ---
 
 ## Adding a New Algorithm
 
-1. Create `core/algorithms/your_module.py`.
-2. Implement `calculate(snapshot: dict, vehicle: dict) -> dict`.
-3. Add a `reset_state()` function to clear any module-level state.
-4. Register in `core/algorithms/__init__.py` inside `AlgorithmDispatcher._register_defaults()`.
-5. Add the algorithm name to the `_ALGORITHM_NAMES` list in `core/api/main.py`.
-6. Document the outputs in this file.
+1. Create `core/algorithms/your_module.py`
+2. Implement the standard interface:
 
-### Requirements
+```python
+def calculate(snapshot: dict[str, Any], vehicle: dict[str, Any]) -> dict[str, Any]:
+    """
+    Args:
+        snapshot: {"pids": {"0x0C": 6420, ...}, "timestamp": 1700000000.0}
+        vehicle: {"max_power_kw": 375, "curb_weight_kg": 1810, ...}
 
-- Handle `None` values for all inputs gracefully.
-- Return a dict with consistent keys (use `None` for unavailable outputs, not omit keys).
-- Do not perform blocking I/O.
-- Keep computation lightweight (target < 1ms per call).
+    Returns:
+        {"your_metric_1": value, "your_metric_2": value, ...}
+    """
+    result = {"your_metric_1": None, "your_metric_2": None}
+    # ... compute ...
+    return result
+```
+
+3. Register in `core/algorithms/__init__.py`
+4. Handle `None` values for every PID input
+5. Document formulas, inputs, outputs, and limitations in this file
+6. Add corresponding dashboard panel in `dashboard/src/panels/`

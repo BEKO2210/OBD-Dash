@@ -2,61 +2,61 @@
   "$schema": "apex-cortex-theme-v1",
   "id": "hud_amber",
   "name": "HUD Amber",
-  "description": "Amber heads-up display style inspired by fighter jet avionics",
+  "description": "Amber-tinted heads-up display theme inspired by military and aviation HUDs",
   "mode": "dark",
   "colors": {
     "background": {
-      "primary": "#000000",
-      "secondary": "#0a0800",
-      "tertiary": "#141000",
-      "surface": "#0f0c00",
-      "elevated": "#1a1500"
+      "primary": "#080600",
+      "secondary": "#121005",
+      "tertiary": "#1e1a0a",
+      "surface": "#141108",
+      "elevated": "#1c180c"
     },
     "foreground": {
-      "primary": "#ffbe20",
-      "secondary": "#cc9810",
-      "muted": "#7a5c0a",
-      "inverse": "#000000"
+      "primary": "#ffbf40",
+      "secondary": "#cc9933",
+      "muted": "#806020",
+      "inverse": "#080600"
     },
     "accent": {
-      "primary": "#ffbe20",
-      "secondary": "#ff6600",
-      "tertiary": "#ffd24a",
-      "success": "#66cc00",
-      "warning": "#ff9900",
-      "danger": "#ff3300",
-      "info": "#ffbe20"
+      "primary": "#ffbf40",
+      "secondary": "#ff9500",
+      "tertiary": "#e6a817",
+      "success": "#8db600",
+      "warning": "#ff9500",
+      "danger": "#ff3b30",
+      "info": "#e6a817"
     },
     "gauge": {
-      "rpm_low": "#66cc00",
-      "rpm_mid": "#ffbe20",
-      "rpm_high": "#ff6600",
-      "rpm_redline": "#ff3300",
-      "speed": "#ffbe20",
-      "throttle": "#66cc00",
-      "brake": "#ff3300",
-      "boost": "#ffd24a",
-      "temp_cold": "#3399ff",
-      "temp_normal": "#66cc00",
-      "temp_warm": "#ff9900",
-      "temp_hot": "#ff3300",
-      "fuel_full": "#66cc00",
-      "fuel_low": "#ff9900",
-      "fuel_critical": "#ff3300"
+      "rpm_low": "#8db600",
+      "rpm_mid": "#ffbf40",
+      "rpm_high": "#ff9500",
+      "rpm_redline": "#ff3b30",
+      "speed": "#ffbf40",
+      "throttle": "#e6a817",
+      "brake": "#ff3b30",
+      "boost": "#ff9500",
+      "temp_cold": "#5a8a00",
+      "temp_normal": "#8db600",
+      "temp_warm": "#ff9500",
+      "temp_hot": "#ff3b30",
+      "fuel_full": "#8db600",
+      "fuel_low": "#ff9500",
+      "fuel_critical": "#ff3b30"
     },
     "border": {
-      "default": "#4d3a00",
-      "subtle": "#332800",
-      "strong": "#997300"
+      "default": "#3d3510",
+      "subtle": "#2a2409",
+      "strong": "#806020"
     },
     "overlay": {
-      "backdrop": "rgba(0, 0, 0, 0.90)",
-      "tooltip": "rgba(15, 12, 0, 0.95)"
+      "backdrop": "rgba(8, 6, 0, 0.90)",
+      "tooltip": "rgba(20, 17, 8, 0.95)"
     }
   },
   "typography": {
     "font_family_display": "Orbitron, sans-serif",
-    "font_family_body": "JetBrains Mono, Fira Code, monospace",
+    "font_family_body": "Inter, system-ui, sans-serif",
     "font_family_mono": "JetBrains Mono, Fira Code, monospace",
     "font_size": {
       "xs": "0.625rem",
@@ -86,46 +86,30 @@
     "section_gap": "1.5rem"
   },
   "borders": {
-    "radius_sm": "0px",
-    "radius_md": "0px",
-    "radius_lg": "2px",
-    "radius_xl": "2px",
+    "radius_sm": "0.25rem",
+    "radius_md": "0.5rem",
+    "radius_lg": "0.75rem",
+    "radius_xl": "1rem",
     "radius_gauge": "9999px",
     "width": "1px"
   },
   "effects": {
-    "glow_primary": "0 0 15px rgba(255, 190, 32, 0.5)",
-    "glow_accent": "0 0 15px rgba(255, 102, 0, 0.5)",
-    "glow_speed": "0 0 15px rgba(255, 190, 32, 0.5)",
-    "shadow_panel": "0 0 1px rgba(255, 190, 32, 0.3), inset 0 0 1px rgba(255, 190, 32, 0.1)",
-    "shadow_elevated": "0 0 2px rgba(255, 190, 32, 0.4), inset 0 0 2px rgba(255, 190, 32, 0.15)",
-    "text_shadow": "0 0 8px rgba(255, 190, 32, 0.6)",
-    "scanline_opacity": 0.03,
-    "backdrop_blur": "0px",
-    "transition_fast": "100ms linear",
-    "transition_normal": "200ms linear",
-    "transition_slow": "350ms linear"
+    "glow_primary": "0 0 12px rgba(255, 191, 64, 0.4)",
+    "glow_accent": "0 0 12px rgba(255, 149, 0, 0.4)",
+    "glow_speed": "0 0 12px rgba(255, 191, 64, 0.3)",
+    "shadow_panel": "0 4px 24px rgba(0, 0, 0, 0.6)",
+    "shadow_elevated": "0 8px 32px rgba(0, 0, 0, 0.8)",
+    "backdrop_blur": "12px",
+    "transition_fast": "150ms ease",
+    "transition_normal": "250ms ease",
+    "transition_slow": "400ms ease"
   },
   "gauge_styles": {
-    "arc_width": 4,
-    "arc_background": "#1a1500",
-    "needle_color": "#ffbe20",
-    "tick_color": "#7a5c0a",
-    "label_color": "#cc9810",
-    "value_color": "#ffbe20",
-    "render_mode": "wireframe"
-  },
-  "hud_specific": {
-    "scanlines_enabled": true,
-    "scanline_spacing_px": 3,
-    "scanline_color": "rgba(255, 190, 32, 0.03)",
-    "crosshair_enabled": true,
-    "grid_overlay": true,
-    "grid_color": "rgba(255, 190, 32, 0.05)",
-    "grid_spacing_px": 40,
-    "vignette_enabled": true,
-    "vignette_intensity": 0.6,
-    "flicker_enabled": false,
-    "monochrome": true
+    "arc_width": 8,
+    "arc_background": "#1e1a0a",
+    "needle_color": "#ffbf40",
+    "tick_color": "#806020",
+    "label_color": "#cc9933",
+    "value_color": "#ffbf40"
   }
 }
