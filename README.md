@@ -20,21 +20,6 @@ Built for Mercedes-AMG, BMW M, Porsche GT, and Audi RS owners who want motorspor
 | **Telemetry Mode** | Engineer view with all gauges, graphs, algorithm outputs, and raw PID data |
 | **Street Mode** | Clean daily-driver view with essential gauges and alert notifications |
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│  APEX CORTEX  |  RACE MODE  |  AMG C63 S  |  Session: 00:14:32     │
-├──────────┬───────────┬───────────┬───────────────────────────────────┤
-│          │           │           │                                   │
-│   RPM    │   SPEED   │  THROTTLE │          G-FORCE PLOT             │
-│  6,420   │  187 kph  │   94.2%   │            [graph]               │
-│          │           │           │                                   │
-├──────────┴───────────┴───────────┼───────────────────────────────────┤
-│  POWER: 347 kW / 465 HP         │  SHIFT ▲  7th → optimal @ 6800   │
-│  TORQUE EFF: 87.3%              │  BRAKE FADE: OK                   │
-│  THERMAL RISK: 0.42 (nominal)   │  TRACTION: stable                 │
-│  FUEL: 34.2L remaining          │  LAP: 1:42.318  DELTA: -0.412     │
-└──────────────────────────────────┴───────────────────────────────────┘
-```
 
 ---
 
@@ -131,39 +116,7 @@ Open `http://localhost:5173` in your browser. The dashboard connects to the back
 
 ## Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                       APEX CORTEX                           │
-│                                                             │
-│  ┌──────────┐   ┌──────────┐   ┌────────────────────────┐  │
-│  │ Vehicle   │──>│ ELM327   │──>│ core/obd/connector.py  │  │
-│  │ OBD-II    │   │ Adapter  │   │ (python-obd)           │  │
-│  └──────────┘   └──────────┘   └──────────┬─────────────┘  │
-│                                            │                │
-│                                ┌───────────v────────────┐   │
-│                                │ core/telemetry/        │   │
-│                                │ collector.py           │   │
-│                                │ (async tiered polling) │   │
-│                                └───────────┬────────────┘   │
-│                                            │                │
-│                                ┌───────────v────────────┐   │
-│                                │ core/telemetry/        │   │
-│                                │ processor.py           │   │
-│                                │ (normalize + smooth)   │   │
-│                                └───────────┬────────────┘   │
-│                                            │                │
-│                                ┌───────────v────────────┐   │
-│                                │ core/algorithms/*      │   │
-│                                │ (8 computation modules)│   │
-│                                └───────────┬────────────┘   │
-│                                            │                │
-│  ┌────────────────────────┐    ┌───────────v────────────┐   │
-│  │ dashboard/src/         │<───│ core/api/websocket.py  │   │
-│  │ React + Vite + Tailwind│ WS │ (FastAPI + WebSocket)  │   │
-│  │                        │10Hz│                        │   │
-│  └────────────────────────┘    └────────────────────────┘   │
-└─────────────────────────────────────────────────────────────┘
-```
+**Vehicle OBD-II Port** &rarr; **ELM327 Adapter** (BT/WiFi/USB) &rarr; **core/obd/connector.py** &rarr; **core/telemetry/collector.py** (async tiered polling) &rarr; **core/telemetry/processor.py** (normalize + smooth) &rarr; **core/algorithms/*** (8 computation modules) &rarr; **core/api/websocket.py** (FastAPI, 10 Hz broadcast) &rarr; **dashboard/src/** (React + Vite + Tailwind)
 
 For the full architecture document with data flow diagrams, technology decisions, and component descriptions, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
@@ -210,74 +163,51 @@ The simulator respects the selected vehicle profile, so RPM ranges, gear ratios,
 
 ## Project Structure
 
-```
-OBD-Dash/
-├── CLAUDE.md                    # AI context document
-├── README.md                    # This file
-├── requirements.txt             # Python dependencies
-├── package.json                 # Root workspace config
-├── config/
-│   ├── vehicles/                # Vehicle profile JSONs
-│   │   ├── template.json
-│   │   ├── amg_c63_s.json
-│   │   ├── bmw_m3_g80.json
-│   │   └── porsche_911_gt3_rs.json
-│   ├── pid_maps/                # Manufacturer-specific PID maps
-│   └── themes/                  # UI theme configurations
-├── core/
-│   ├── __init__.py
-│   ├── obd/
-│   │   ├── connector.py         # ELM327 connection manager
-│   │   ├── pid_registry.py      # PID definitions + decoders
-│   │   ├── protocols.py         # OBD protocol handlers
-│   │   └── simulator.py         # Development data generator
-│   ├── telemetry/
-│   │   ├── collector.py         # Async tiered polling loop
-│   │   ├── processor.py         # Data normalization + smoothing
-│   │   └── logger.py            # Session recording
-│   ├── algorithms/
-│   │   ├── __init__.py          # Algorithm registry + dispatcher
-│   │   ├── performance.py       # Power, torque, load
-│   │   ├── dynamics.py          # G-force, weight transfer, yaw
-│   │   ├── fuel.py              # AFR, consumption, range
-│   │   ├── braking.py           # BPI, stopping distance, fade
-│   │   ├── traction.py          # Slip ratio, stability, ESP
-│   │   ├── thermal.py           # Thermal risk, trend, prediction
-│   │   ├── shift_advisor.py     # Shift points, gear efficiency
-│   │   └── lap_timer.py         # Lap/sector timing, delta
-│   └── api/
-│       ├── main.py              # FastAPI application
-│       ├── websocket.py         # WebSocket broadcaster
-│       └── routes/
-│           ├── session.py       # Session management endpoints
-│           ├── vehicle.py       # Vehicle profile endpoints
-│           └── status.py        # Connection status endpoints
-├── dashboard/
-│   ├── package.json
-│   ├── vite.config.js
-│   ├── tailwind.config.js
-│   ├── index.html
-│   └── src/
-│       ├── main.jsx
-│       ├── App.jsx
-│       ├── index.css
-│       ├── hooks/
-│       │   ├── useWebSocket.js
-│       │   ├── useOBDData.js
-│       │   └── useAlerts.js
-│       ├── layouts/
-│       │   ├── RaceMode.jsx
-│       │   ├── TelemetryMode.jsx
-│       │   └── StreetMode.jsx
-│       ├── panels/              # Individual dashboard panels
-│       └── utils/               # Helper utilities
-├── sessions/                    # Recorded telemetry sessions
-└── docs/
-    ├── ARCHITECTURE.md
-    ├── OBD_PROTOCOLS.md
-    ├── ALGORITHMS.md
-    └── SETUP.md
-```
+| Path | Description |
+|------|-------------|
+| `CLAUDE.md` | AI context document |
+| `requirements.txt` | Python dependencies |
+| `package.json` | Root workspace config |
+| **config/** | |
+| `config/vehicles/` | Vehicle profile JSONs (template, amg_c63_s, bmw_m3_g80, porsche_911_gt3_rs) |
+| `config/pid_maps/` | Manufacturer-specific PID maps |
+| `config/themes/` | UI theme configurations |
+| **core/obd/** | |
+| `core/obd/connector.py` | ELM327 connection manager |
+| `core/obd/pid_registry.py` | PID definitions + decoders |
+| `core/obd/protocols.py` | OBD protocol handlers |
+| `core/obd/simulator.py` | Development data generator |
+| **core/telemetry/** | |
+| `core/telemetry/collector.py` | Async tiered polling loop |
+| `core/telemetry/processor.py` | Data normalization + smoothing |
+| `core/telemetry/logger.py` | Session recording |
+| **core/algorithms/** | |
+| `core/algorithms/__init__.py` | Algorithm registry + dispatcher |
+| `core/algorithms/performance.py` | Power, torque, load |
+| `core/algorithms/dynamics.py` | G-force, weight transfer, yaw |
+| `core/algorithms/fuel.py` | AFR, consumption, range |
+| `core/algorithms/braking.py` | BPI, stopping distance, fade |
+| `core/algorithms/traction.py` | Slip ratio, stability, ESP |
+| `core/algorithms/thermal.py` | Thermal risk, trend, prediction |
+| `core/algorithms/shift_advisor.py` | Shift points, gear efficiency |
+| `core/algorithms/lap_timer.py` | Lap/sector timing, delta |
+| **core/api/** | |
+| `core/api/main.py` | FastAPI application |
+| `core/api/websocket.py` | WebSocket broadcaster |
+| `core/api/routes/session.py` | Session management endpoints |
+| `core/api/routes/vehicle.py` | Vehicle profile endpoints |
+| `core/api/routes/status.py` | Connection status endpoints |
+| **dashboard/src/** | |
+| `dashboard/src/App.jsx` | Root app, mode switcher |
+| `dashboard/src/hooks/` | useWebSocket, useOBDData, useAlerts |
+| `dashboard/src/layouts/` | RaceMode, TelemetryMode, StreetMode |
+| `dashboard/src/panels/` | Individual dashboard panels |
+| **docs/** | |
+| `docs/ARCHITECTURE.md` | System architecture |
+| `docs/OBD_PROTOCOLS.md` | PID reference + protocol guide |
+| `docs/ALGORITHMS.md` | Algorithm formulas + outputs |
+| `docs/SETUP.md` | Hardware + installation guide |
+| **sessions/** | Recorded telemetry sessions |
 
 ---
 
