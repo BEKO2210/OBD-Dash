@@ -1,142 +1,194 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
-const WHEEL_W = 28;
-const WHEEL_H = 40;
-const CAR_W = 100;
-const CAR_H = 180;
-const SVG_W = 160;
-const SVG_H = 220;
-const CX = SVG_W / 2;
-const CY = SVG_H / 2;
+const BASE_WEIGHT = 25; // percentage per corner at rest
 
-function getWheelColor(weight, total) {
-  if (weight == null || total === 0) return '#333';
-  const pct = weight / total;
-  if (pct < 0.22) return '#3b82f6';
-  if (pct < 0.27) return '#22c55e';
-  if (pct < 0.32) return '#f59e0b';
-  return '#ef4444';
-}
-
-function getWheelOpacity(weight, maxCorner) {
-  if (weight == null || maxCorner === 0) return 0.3;
-  return 0.3 + (weight / maxCorner) * 0.7;
+function cornerColor(pct) {
+  if (pct == null) return '#555';
+  if (pct > 35) return '#ef4444';
+  if (pct > 30) return '#f97316';
+  if (pct > 27) return '#f59e0b';
+  return '#22c55e';
 }
 
 export default function WeightTransfer({ data }) {
-  const fl = data?.weight_fl ?? null;
-  const fr = data?.weight_fr ?? null;
-  const rl = data?.weight_rl ?? null;
-  const rr = data?.weight_rr ?? null;
+  const gLat = data?.g_lat ?? 0;
+  const gLong = data?.g_long ?? 0;
 
-  const total = (fl ?? 0) + (fr ?? 0) + (rl ?? 0) + (rr ?? 0);
-  const maxCorner = Math.max(fl ?? 0, fr ?? 0, rl ?? 0, rr ?? 0, 1);
+  // Compute weight distribution from G-forces.
+  // Positive g_long = acceleration (weight shifts rear).
+  // Positive g_lat = right turn (weight shifts left).
+  const weights = useMemo(() => {
+    const latShift = (gLat ?? 0) * 8;   // percentage shift per G
+    const longShift = (gLong ?? 0) * 8;
 
-  const wheels = [
-    { label: 'FL', weight: fl, x: CX - CAR_W / 2 - 2, y: CY - CAR_H / 2 + 10 },
-    { label: 'FR', weight: fr, x: CX + CAR_W / 2 - WHEEL_W + 2, y: CY - CAR_H / 2 + 10 },
-    { label: 'RL', weight: rl, x: CX - CAR_W / 2 - 2, y: CY + CAR_H / 2 - WHEEL_H - 10 },
-    { label: 'RR', weight: rr, x: CX + CAR_W / 2 - WHEEL_W + 2, y: CY + CAR_H / 2 - WHEEL_H - 10 },
+    const fl = BASE_WEIGHT - longShift + latShift;
+    const fr = BASE_WEIGHT - longShift - latShift;
+    const rl = BASE_WEIGHT + longShift + latShift;
+    const rr = BASE_WEIGHT + longShift - latShift;
+
+    // Clamp to 5-50 range.
+    const clamp = (v) => Math.max(5, Math.min(50, v));
+    return {
+      fl: clamp(fl),
+      fr: clamp(fr),
+      rl: clamp(rl),
+      rr: clamp(rr),
+    };
+  }, [gLat, gLong]);
+
+  // Custom weight from data (if available).
+  const wfl = data?.weight_fl ?? weights.fl;
+  const wfr = data?.weight_fr ?? weights.fr;
+  const wrl = data?.weight_rl ?? weights.rl;
+  const wrr = data?.weight_rr ?? weights.rr;
+
+  const corners = [
+    { key: 'FL', value: wfl, x: 55, y: 50 },
+    { key: 'FR', value: wfr, x: 145, y: 50 },
+    { key: 'RL', value: wrl, x: 55, y: 170 },
+    { key: 'RR', value: wrr, x: 145, y: 170 },
   ];
 
   return (
-    <div className="flex flex-col items-center w-full h-full">
-      <svg viewBox={`0 0 ${SVG_W} ${SVG_H}`} className="w-full max-w-[180px]">
+    <div className="panel-carbon p-3">
+      <div className="flex items-center gap-1.5 mb-2">
+        <span className="text-xs font-mono-tech text-neutral-500 tracking-widest">
+          WEIGHT TRANSFER
+        </span>
+      </div>
+
+      <svg viewBox="0 0 200 220" className="w-full max-w-[220px] mx-auto">
         {/* Car body outline */}
-        <rect
-          x={CX - CAR_W / 2 + 8}
-          y={CY - CAR_H / 2}
-          width={CAR_W - 16}
-          height={CAR_H}
-          rx={12}
+        <path
+          d="M 60 35 L 140 35 C 155 35 160 45 160 55 L 160 165 C 160 180 155 190 140 190 L 60 190 C 45 190 40 180 40 165 L 40 55 C 40 45 45 35 60 35 Z"
+          fill="none"
+          stroke="#444"
+          strokeWidth="1.5"
+        />
+        {/* Windshield */}
+        <path
+          d="M 65 65 L 135 65 L 130 45 L 70 45 Z"
           fill="none"
           stroke="#333"
-          strokeWidth={1.5}
+          strokeWidth="1"
         />
-
-        {/* Front windshield line */}
-        <line
-          x1={CX - CAR_W / 2 + 16}
-          y1={CY - CAR_H / 2 + 40}
-          x2={CX + CAR_W / 2 - 16}
-          y2={CY - CAR_H / 2 + 40}
-          stroke="#2a2a2a"
-          strokeWidth={1}
+        {/* Rear window */}
+        <path
+          d="M 70 175 L 130 175 L 135 160 L 65 160 Z"
+          fill="none"
+          stroke="#333"
+          strokeWidth="1"
         />
-
-        {/* Rear line */}
-        <line
-          x1={CX - CAR_W / 2 + 16}
-          y1={CY + CAR_H / 2 - 40}
-          x2={CX + CAR_W / 2 - 16}
-          y2={CY + CAR_H / 2 - 40}
-          stroke="#2a2a2a"
-          strokeWidth={1}
-        />
-
         {/* Center line */}
-        <line
-          x1={CX}
-          y1={CY - CAR_H / 2 + 5}
-          x2={CX}
-          y2={CY + CAR_H / 2 - 5}
-          stroke="#1f1f1f"
-          strokeWidth={0.5}
-          strokeDasharray="4 4"
-        />
+        <line x1="100" y1="40" x2="100" y2="185" stroke="#222" strokeWidth="0.5" strokeDasharray="4 3" />
+        <line x1="45" y1="112" x2="155" y2="112" stroke="#222" strokeWidth="0.5" strokeDasharray="4 3" />
 
         {/* Wheels */}
-        {wheels.map((w) => {
-          const color = getWheelColor(w.weight, total);
-          const opacity = getWheelOpacity(w.weight, maxCorner);
-          const pctText = total > 0 && w.weight != null
-            ? `${((w.weight / total) * 100).toFixed(0)}%`
-            : '--%';
+        {[
+          { x: 38, y: 55, w: 10, h: 28 },   // FL
+          { x: 152, y: 55, w: 10, h: 28 },   // FR
+          { x: 38, y: 142, w: 10, h: 28 },   // RL
+          { x: 152, y: 142, w: 10, h: 28 },  // RR
+        ].map((wheel, i) => (
+          <rect
+            key={i}
+            x={wheel.x}
+            y={wheel.y}
+            width={wheel.w}
+            height={wheel.h}
+            rx="2"
+            fill="#333"
+            stroke="#555"
+            strokeWidth="0.5"
+          />
+        ))}
 
+        {/* Weight circles at each corner */}
+        {corners.map(({ key, value, x, y }) => {
+          const radius = 10 + (value / 50) * 14;
+          const color = cornerColor(value);
+          const opacity = 0.15 + (value / 50) * 0.35;
           return (
-            <g key={w.label}>
-              <rect
-                x={w.x}
-                y={w.y}
-                width={WHEEL_W}
-                height={WHEEL_H}
-                rx={4}
+            <g key={key}>
+              <circle
+                cx={x}
+                cy={y}
+                r={radius}
                 fill={color}
                 opacity={opacity}
+                style={{ transition: 'all 0.15s ease-out' }}
+              />
+              <circle
+                cx={x}
+                cy={y}
+                r={radius}
+                fill="none"
                 stroke={color}
-                strokeWidth={1}
+                strokeWidth="1"
+                opacity={0.6}
               />
               <text
-                x={w.x + WHEEL_W / 2}
-                y={w.y + WHEEL_H / 2 - 4}
-                textAnchor="middle"
-                fill="#e5e5e5"
-                fontSize="8"
+                x={x}
+                y={y - 2}
+                fill={color}
+                fontSize="11"
                 fontWeight="bold"
+                textAnchor="middle"
+                dominantBaseline="middle"
                 fontFamily="'Orbitron', sans-serif"
               >
-                {w.label}
+                {Math.round(value)}%
               </text>
               <text
-                x={w.x + WHEEL_W / 2}
-                y={w.y + WHEEL_H / 2 + 8}
+                x={x}
+                y={y + 11}
+                fill="#888"
+                fontSize="8"
                 textAnchor="middle"
-                fill="#aaa"
-                fontSize="7"
                 fontFamily="'Share Tech Mono', monospace"
               >
-                {pctText}
+                {key}
               </text>
             </g>
           );
         })}
 
-        {/* Direction arrow */}
-        <polygon
-          points={`${CX},${CY - CAR_H / 2 - 8} ${CX - 5},${CY - CAR_H / 2 - 2} ${CX + 5},${CY - CAR_H / 2 - 2}`}
-          fill="#444"
-        />
+        {/* G-force arrow indicator */}
+        {(Math.abs(gLat) > 0.05 || Math.abs(gLong) > 0.05) && (
+          <line
+            x1="100"
+            y1="112"
+            x2={100 + (gLat ?? 0) * 30}
+            y2={112 - (gLong ?? 0) * 30}
+            stroke="#f59e0b"
+            strokeWidth="2"
+            strokeLinecap="round"
+            markerEnd="url(#arrowhead)"
+            style={{ filter: 'drop-shadow(0 0 4px rgba(245,158,11,0.5))' }}
+          />
+        )}
+        <defs>
+          <marker id="arrowhead" markerWidth="6" markerHeight="4" refX="6" refY="2" orient="auto">
+            <polygon points="0 0, 6 2, 0 4" fill="#f59e0b" />
+          </marker>
+        </defs>
       </svg>
+
+      {/* G-force readout */}
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        <div className="bg-neutral-800/40 rounded p-1.5 text-center">
+          <div className="text-[9px] font-mono-tech text-neutral-500">LAT G</div>
+          <div className="font-mono-tech text-sm font-bold text-amber-400">
+            {gLat != null ? (gLat >= 0 ? '+' : '') + gLat.toFixed(2) : '--'}
+          </div>
+        </div>
+        <div className="bg-neutral-800/40 rounded p-1.5 text-center">
+          <div className="text-[9px] font-mono-tech text-neutral-500">LON G</div>
+          <div className="font-mono-tech text-sm font-bold text-amber-400">
+            {gLong != null ? (gLong >= 0 ? '+' : '') + gLong.toFixed(2) : '--'}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
