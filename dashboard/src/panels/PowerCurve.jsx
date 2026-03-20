@@ -51,7 +51,7 @@ export default function PowerCurve({ data, history }) {
         </div>
       </div>
 
-      <div className="h-48">
+      <div className="h-40 sm:h-48 lg:h-56">
         {chartData.length > 2 ? (
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 5, right: 5, left: -15, bottom: 0 }}>

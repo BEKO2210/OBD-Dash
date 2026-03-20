@@ -128,7 +128,7 @@ export default function RPMGauge({ data }) {
       </div>
 
       {/* SVG Gauge */}
-      <svg ref={svgRef} viewBox="0 0 240 200" className="w-full max-w-[280px]">
+      <svg ref={svgRef} viewBox="0 0 240 200" className="w-full">
         {/* Background arcs (dim) */}
         {zones.map((zone, i) => (
           <path

@@ -45,7 +45,7 @@ export default function GForceBall({ data, history }) {
   return (
     <div className="panel-carbon p-3 flex flex-col items-center">
       <div className="text-xs font-mono-tech text-neutral-500 tracking-widest mb-1">G-FORCE</div>
-      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full max-w-[240px]">
+      <svg viewBox={`0 0 ${SIZE} ${SIZE}`} className="w-full">
         {/* Rings */}
         {rings.map((g) => (
           <circle

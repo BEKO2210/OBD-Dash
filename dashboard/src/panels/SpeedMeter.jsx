@@ -62,7 +62,7 @@ export default function SpeedMeter({ data }) {
       </div>
 
       {/* Small analog arc */}
-      <svg viewBox="0 0 200 130" className="w-full max-w-[220px] -mt-1">
+      <svg viewBox="0 0 200 130" className="w-full -mt-1">
         {/* Background arc */}
         <path
           d={arcPath(CX, CY, R, START, START + SWEEP)}
