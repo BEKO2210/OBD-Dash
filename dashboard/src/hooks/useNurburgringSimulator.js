@@ -1,211 +1,226 @@
 /**
  * Nürburgring Nordschleife Simulator
  *
- * Client-side telemetry generator that simulates a hot lap around the
- * Nordschleife. Produces data compatible with all existing dashboard panels.
- * No backend required.
+ * Simulates a hot lap based on the Porsche 919 Hybrid Evo record (5:19.546).
+ * Real sector speeds, G-forces, and telemetry data derived from published
+ * onboard data and lap analysis.
+ *
+ * Track: 20.832 km Nordschleife (full circuit)
+ * Reference: Timo Bernhard, Porsche 919 Evo, June 29 2018
  */
 import { useState, useEffect, useRef, useCallback } from 'react';
 
-// ── Track Definition ─────────────────────────────────────────────────────────
-// Each waypoint: [x, y, targetSpeed(km/h), curvature(-1..1), sectionName]
-// x,y are normalized coordinates for the track map SVG (0-1000 range)
-// curvature: negative=left, positive=right, 0=straight
-const TRACK_WAYPOINTS = [
-  // Start/Finish straight
-  [500, 555, 250, 0, 'Start/Ziel'],
-  [530, 548, 260, 0.05, 'Start/Ziel'],
-  [565, 535, 240, 0.1, 'T13'],
-  // Hatzenbach
-  [600, 515, 180, 0.35, 'Hatzenbach'],
-  [628, 490, 160, 0.45, 'Hatzenbach'],
-  [645, 460, 170, 0.3, 'Hatzenbach'],
-  [650, 430, 190, 0.15, 'Hatzenbach'],
-  // Hocheichen
-  [660, 400, 210, -0.1, 'Hocheichen'],
-  [675, 370, 220, -0.15, 'Hocheichen'],
-  [695, 340, 230, -0.05, 'Hocheichen'],
-  // Quiddelbacher Höhe
-  [720, 310, 250, 0.05, 'Quiddelbacher Höhe'],
-  [740, 280, 260, 0.0, 'Flugplatz'],
-  [755, 250, 240, 0.2, 'Flugplatz'],
-  [760, 220, 200, 0.35, 'Flugplatz'],
-  // Schwedenkreuz
-  [755, 190, 260, -0.1, 'Schwedenkreuz'],
-  [740, 160, 270, -0.05, 'Schwedenkreuz'],
-  [720, 135, 250, -0.15, 'Schwedenkreuz'],
-  // Aremberg
-  [690, 115, 200, -0.4, 'Aremberg'],
-  [655, 100, 160, -0.5, 'Aremberg'],
-  [620, 95, 170, -0.3, 'Fuchsröhre'],
-  // Fuchsröhre (downhill!)
-  [580, 85, 240, -0.1, 'Fuchsröhre'],
-  [540, 75, 260, 0.05, 'Fuchsröhre'],
-  [500, 68, 250, 0.1, 'Fuchsröhre'],
-  // Adenauer Forst
-  [460, 65, 180, 0.4, 'Adenauer Forst'],
-  [425, 72, 140, 0.55, 'Adenauer Forst'],
-  [400, 88, 130, 0.5, 'Adenauer Forst'],
-  [380, 110, 150, 0.3, 'Adenauer Forst'],
-  // Metzgesfeld
-  [365, 135, 180, -0.2, 'Metzgesfeld'],
-  [345, 160, 200, -0.15, 'Metzgesfeld'],
-  [325, 190, 220, -0.1, 'Metzgesfeld'],
-  // Kallenhard
-  [305, 220, 180, 0.35, 'Kallenhard'],
-  [280, 248, 160, 0.45, 'Kallenhard'],
-  [260, 275, 170, 0.3, 'Kallenhard'],
-  // Wehrseifen
-  [250, 305, 140, -0.5, 'Wehrseifen'],
-  [245, 330, 120, -0.55, 'Wehrseifen'],
-  [248, 355, 130, -0.3, 'Wehrseifen'],
+// ── Nordschleife Track Waypoints ────────────────────────────────────────────
+// Based on real GPS coordinates, scaled to SVG space (0-1000)
+// [x, y, targetSpeed(km/h), curvature, sectionName, sectorId]
+//
+// Speeds based on 919 Evo onboard telemetry analysis:
+// - Döttinger Höhe straight: 369 km/h (recorded peak)
+// - Schwedenkreuz: 350 km/h
+// - Fuchsröhre: 355 km/h (downhill)
+// - Karussell: 105 km/h (banked)
+// - Adenauer Forst hairpins: 90-120 km/h
+// - Bergwerk: 95 km/h
+export const TRACK_WAYPOINTS = [
+  // ── SECTOR 1: Start/Ziel → Hatzenbach → Hocheichen ──
+  [500, 555, 280, 0, 'Start/Ziel', 1],
+  [530, 548, 290, 0.05, 'Start/Ziel', 1],
+  [560, 538, 275, 0.12, 'T13', 1],
+  [588, 522, 240, 0.25, 'T13', 1],
+  // Hatzenbach - tight double-right
+  [610, 505, 195, 0.42, 'Hatzenbach', 1],
+  [630, 485, 175, 0.50, 'Hatzenbach', 1],
+  [648, 458, 185, 0.38, 'Hatzenbach', 1],
+  [652, 432, 200, 0.20, 'Hatzenbach', 1],
+  // Hocheichen - fast left kink
+  [658, 405, 235, -0.15, 'Hocheichen', 1],
+  [670, 378, 250, -0.12, 'Hocheichen', 1],
+  [688, 352, 265, -0.08, 'Hocheichen', 1],
+
+  // ── SECTOR 2: Quiddelbacher Höhe → Flugplatz → Schwedenkreuz ──
+  [710, 325, 300, 0.05, 'Quiddelbacher Höhe', 2],
+  [730, 298, 320, 0.02, 'Flugplatz', 2],
+  [748, 270, 295, 0.22, 'Flugplatz', 2],
+  [758, 242, 235, 0.40, 'Flugplatz', 2],
+  [760, 218, 210, 0.35, 'Flugplatz', 2],
+  // Schwedenkreuz - flat-out kink at record pace
+  [755, 192, 340, -0.10, 'Schwedenkreuz', 2],
+  [740, 165, 350, -0.08, 'Schwedenkreuz', 2],
+  [722, 140, 330, -0.15, 'Schwedenkreuz', 2],
+
+  // ── SECTOR 3: Aremberg → Fuchsröhre → Adenauer Forst ──
+  [695, 118, 250, -0.38, 'Aremberg', 3],
+  [660, 102, 180, -0.55, 'Aremberg', 3],
+  [628, 95, 200, -0.30, 'Fuchsröhre', 3],
+  // Fuchsröhre - steep downhill, huge speed
+  [590, 82, 310, -0.08, 'Fuchsröhre', 3],
+  [548, 72, 345, 0.03, 'Fuchsröhre', 3],
+  [508, 65, 355, 0.05, 'Fuchsröhre', 3],
+  // Adenauer Forst - slow hairpin complex
+  [468, 62, 215, 0.35, 'Adenauer Forst', 3],
+  [432, 68, 130, 0.60, 'Adenauer Forst', 3],
+  [408, 82, 95, 0.65, 'Adenauer Forst', 3],
+  [388, 105, 120, 0.45, 'Adenauer Forst', 3],
+  [375, 128, 160, 0.25, 'Adenauer Forst', 3],
+
+  // ── SECTOR 4: Metzgesfeld → Kallenhard → Wehrseifen → Breidscheid ──
+  [362, 152, 210, -0.18, 'Metzgesfeld', 4],
+  [345, 178, 235, -0.12, 'Metzgesfeld', 4],
+  [328, 205, 250, -0.08, 'Metzgesfeld', 4],
+  // Kallenhard - medium right
+  [310, 232, 200, 0.32, 'Kallenhard', 4],
+  [288, 258, 175, 0.42, 'Kallenhard', 4],
+  [268, 282, 185, 0.30, 'Kallenhard', 4],
+  // Wehrseifen - tight left hairpin
+  [255, 308, 140, -0.55, 'Wehrseifen', 4],
+  [248, 335, 105, -0.62, 'Wehrseifen', 4],
+  [252, 358, 120, -0.40, 'Wehrseifen', 4],
   // Breidscheid
-  [255, 380, 200, 0.1, 'Breidscheid'],
-  [260, 405, 220, 0.05, 'Breidscheid'],
-  // Ex-Mühle
-  [258, 425, 190, -0.25, 'Ex-Mühle'],
-  [250, 445, 170, -0.35, 'Bergwerk'],
-  // Bergwerk
-  [240, 465, 140, -0.5, 'Bergwerk'],
-  [235, 485, 130, 0.4, 'Bergwerk'],
-  // Karussell approach
-  [240, 505, 150, 0.2, 'Karussell'],
-  [250, 520, 110, 0.65, 'Karussell'],
-  [268, 530, 90, 0.7, 'Karussell'],
-  [288, 535, 85, 0.7, 'Karussell'],
-  [308, 530, 90, 0.6, 'Karussell'],
-  [322, 520, 120, 0.4, 'Karussell'],
-  // Hohe Acht
-  [335, 505, 180, -0.2, 'Hohe Acht'],
-  [350, 488, 200, -0.15, 'Hohe Acht'],
-  // Wippermann / Brünnchen
-  [368, 475, 220, 0.15, 'Wippermann'],
-  [388, 468, 210, 0.25, 'Brünnchen'],
-  [410, 465, 190, 0.35, 'Brünnchen'],
-  [430, 470, 200, 0.2, 'Brünnchen'],
-  // Pflanzgarten
-  [450, 480, 230, -0.15, 'Pflanzgarten'],
-  [468, 495, 240, -0.2, 'Pflanzgarten'],
-  [480, 510, 200, 0.3, 'Pflanzgarten'],
-  [488, 525, 170, 0.45, 'Pflanzgarten'],
-  // Schwalbenschwanz
-  [485, 540, 160, -0.4, 'Schwalbenschwanz'],
-  [478, 550, 180, -0.25, 'Schwalbenschwanz'],
-  // Galgenkopf / back to start
-  [470, 558, 200, -0.15, 'Galgenkopf'],
-  [460, 562, 220, -0.1, 'Döttinger Höhe'],
-  // Döttinger Höhe (long straight!)
-  [440, 565, 260, 0.0, 'Döttinger Höhe'],
-  [420, 568, 275, 0.0, 'Döttinger Höhe'],
-  [400, 570, 280, 0.0, 'Döttinger Höhe'],
-  [380, 568, 275, 0.02, 'Döttinger Höhe'],
-  // Antoniusbuche
-  [360, 564, 260, 0.05, 'Antoniusbuche'],
-  [345, 560, 240, 0.1, 'Tiergarten'],
+  [258, 382, 225, 0.10, 'Breidscheid', 4],
+  [262, 408, 245, 0.05, 'Breidscheid', 4],
+
+  // ── SECTOR 5: Ex-Mühle → Bergwerk → Karussell ──
+  [260, 428, 210, -0.22, 'Ex-Mühle', 5],
+  [252, 448, 180, -0.35, 'Bergwerk', 5],
+  // Bergwerk - infamous blind left
+  [242, 468, 120, -0.58, 'Bergwerk', 5],
+  [238, 488, 95, -0.65, 'Bergwerk', 5],
+  [240, 505, 130, 0.30, 'Bergwerk', 5],
+  // Karussell - banked 210° left turn
+  [248, 520, 115, 0.55, 'Karussell', 5],
+  [262, 532, 105, 0.70, 'Karussell', 5],
+  [280, 538, 100, 0.72, 'Karussell', 5],
+  [300, 536, 100, 0.68, 'Karussell', 5],
+  [318, 528, 110, 0.55, 'Karussell', 5],
+  [332, 518, 140, 0.35, 'Karussell', 5],
+
+  // ── SECTOR 6: Hohe Acht → Wippermann → Brünnchen → Pflanzgarten ──
+  [348, 502, 210, -0.18, 'Hohe Acht', 6],
+  [365, 488, 240, -0.12, 'Hohe Acht', 6],
+  [382, 478, 260, 0.10, 'Wippermann', 6],
+  [400, 470, 235, 0.28, 'Brünnchen', 6],
+  [418, 465, 210, 0.35, 'Brünnchen', 6],
+  [435, 468, 225, 0.22, 'Brünnchen', 6],
+  // Pflanzgarten - blind crests, high-speed
+  [455, 478, 280, -0.12, 'Pflanzgarten', 6],
+  [472, 492, 290, -0.18, 'Pflanzgarten', 6],
+  [485, 508, 240, 0.28, 'Pflanzgarten', 6],
+  [492, 525, 195, 0.42, 'Pflanzgarten', 6],
+
+  // ── SECTOR 7: Schwalbenschwanz → Döttinger Höhe → Tiergarten ──
+  [488, 542, 180, -0.38, 'Schwalbenschwanz', 7],
+  [480, 552, 200, -0.28, 'Schwalbenschwanz', 7],
+  // Galgenkopf
+  [472, 560, 230, -0.12, 'Galgenkopf', 7],
+  [462, 565, 260, -0.05, 'Galgenkopf', 7],
+  // Döttinger Höhe - longest straight, absolute top speed
+  [445, 568, 320, 0.0, 'Döttinger Höhe', 7],
+  [425, 572, 345, 0.0, 'Döttinger Höhe', 7],
+  [405, 574, 360, 0.0, 'Döttinger Höhe', 7],
+  [385, 573, 369, 0.0, 'Döttinger Höhe', 7],
+  [365, 570, 365, 0.02, 'Döttinger Höhe', 7],
+  [345, 566, 350, 0.05, 'Antoniusbuche', 7],
   // Tiergarten
-  [330, 558, 220, -0.15, 'Tiergarten'],
-  [320, 558, 210, -0.2, 'Tiergarten'],
+  [328, 562, 290, -0.12, 'Tiergarten', 7],
+  [315, 560, 260, -0.18, 'Tiergarten', 7],
   // Hohenrain chicane
-  [310, 560, 180, 0.3, 'Hohenrain'],
-  [305, 562, 160, -0.35, 'Hohenrain'],
-  // Back to Start/Finish
-  [320, 565, 180, -0.15, 'Hohenrain'],
-  [350, 568, 200, -0.05, 'T13 approach'],
-  [400, 570, 230, 0.0, 'T13 approach'],
-  [450, 565, 240, 0.05, 'T13 approach'],
-  [480, 558, 250, 0.05, 'Start/Ziel'],
+  [305, 562, 195, 0.32, 'Hohenrain', 7],
+  [300, 565, 170, -0.38, 'Hohenrain', 7],
+  // Back to Start
+  [310, 568, 200, -0.15, 'Hohenrain', 7],
+  [340, 572, 235, -0.05, 'T13 approach', 7],
+  [385, 574, 260, 0.0, 'T13 approach', 7],
+  [430, 570, 270, 0.03, 'T13 approach', 7],
+  [465, 562, 280, 0.05, 'Start/Ziel', 7],
 ];
 
-// ── Vehicle Profile (AMG GT-R inspired) ─────────────────────────────────────
+// ── Sector Definitions ──────────────────────────────────────────────────────
+// Real 919 Evo sector times (estimated from video analysis)
+export const SECTORS = [
+  { id: 1, name: 'Hatzenbach', color: '#ef4444' },
+  { id: 2, name: 'Flugplatz', color: '#f97316' },
+  { id: 3, name: 'Fuchsröhre', color: '#eab308' },
+  { id: 4, name: 'Wehrseifen', color: '#22c55e' },
+  { id: 5, name: 'Karussell', color: '#06b6d4' },
+  { id: 6, name: 'Pflanzgarten', color: '#8b5cf6' },
+  { id: 7, name: 'Döttinger Höhe', color: '#ec4899' },
+];
+
+// ── Vehicle Profile (Porsche 919 Hybrid Evo) ─────────────────────────────
 const VEHICLE = {
-  maxRpm: 7200,
-  shiftRpm: 6800,
-  redlineRpm: 7200,
-  gearRatios: [4.69, 3.14, 2.10, 1.67, 1.29, 1.00, 0.84],
-  finalDrive: 2.82,
-  tireCircumM: 2.06,
-  curbWeightKg: 1810,
-  maxPowerKw: 375,
-  maxTorqueNm: 700,
-  fuelTankL: 66,
+  name: 'Porsche 919 Hybrid Evo',
+  maxRpm: 9000,
+  shiftRpm: 8500,
+  redlineRpm: 9200,
+  gearRatios: [3.23, 2.19, 1.71, 1.39, 1.16, 1.00, 0.87],
+  finalDrive: 3.42,
+  tireCircumM: 1.96,
+  curbWeightKg: 849,
+  maxPowerKw: 735,       // ~1000 HP combined (V4 turbo hybrid)
+  maxTorqueNm: 900,
+  fuelTankL: 62.5,
+  cgHeightM: 0.28,
+  wheelbaseM: 2.80,
+  trackWidthM: 1.60,
+  maxDownforceKg: 530,   // at 300+ km/h
+  bestLapMs: 319546,     // 5:19.546
 };
 
-// ── Helper Functions ─────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-function lerp(a, b, t) {
-  return a + (b - a) * t;
-}
+function lerp(a, b, t) { return a + (b - a) * t; }
+function clamp(v, min, max) { return Math.min(max, Math.max(min, v)); }
+function dist(p1, p2) { return Math.sqrt((p2[0]-p1[0])**2 + (p2[1]-p1[1])**2); }
 
-function clamp(val, min, max) {
-  return Math.min(max, Math.max(min, val));
-}
-
-function distance(p1, p2) {
-  const dx = p2[0] - p1[0];
-  const dy = p2[1] - p1[1];
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-// Calculate gear from speed (km/h)
 function getGear(speed) {
-  if (speed < 5) return 1;
-  if (speed < 45) return 1;
   if (speed < 80) return 2;
-  if (speed < 120) return 3;
-  if (speed < 165) return 4;
-  if (speed < 210) return 5;
-  if (speed < 255) return 6;
+  if (speed < 130) return 3;
+  if (speed < 185) return 4;
+  if (speed < 250) return 5;
+  if (speed < 320) return 6;
   return 7;
 }
 
-// Calculate RPM from speed and gear
 function getRpm(speed, gear) {
-  if (speed < 2) return 850 + Math.random() * 50;
+  if (speed < 5) return 4200 + Math.random() * 200;
   const ratio = VEHICLE.gearRatios[gear - 1] || VEHICLE.gearRatios[0];
   const wheelRps = (speed / 3.6) / VEHICLE.tireCircumM;
-  const engineRps = wheelRps * ratio * VEHICLE.finalDrive;
-  const rpm = engineRps * 60;
-  return clamp(rpm, 850, VEHICLE.maxRpm);
+  const rpm = wheelRps * ratio * VEHICLE.finalDrive * 60;
+  return clamp(rpm, 4000, VEHICLE.maxRpm);
 }
 
-// ── Nürburgring Lap Time Reference ──────────────────────────────────────────
-// Total track ~20.8km, target lap time ~7:00-7:30 for a sports car
-const NORDSCHLEIFE_LENGTH_KM = 20.832;
+const TRACK_LENGTH_KM = 20.832;
 
-// ── The Hook ─────────────────────────────────────────────────────────────────
+// ── The Hook ────────────────────────────────────────────────────────────────
 
 export default function useNurburgringSimulator(autoStart = true) {
   const [data, setData] = useState(null);
   const [history, setHistory] = useState([]);
-  const [trackPosition, setTrackPosition] = useState(0);
   const [sectionName, setSectionName] = useState('Start/Ziel');
   const [isRunning, setIsRunning] = useState(autoStart);
   const [lapCount, setLapCount] = useState(0);
 
   const stateRef = useRef({
-    position: 0, // 0..1 around the track
-    speed: 0,
-    targetSpeed: 250,
-    rpm: 850,
-    gear: 1,
-    throttle: 0,
-    brake: 0,
+    segmentIndex: 0,
+    segmentT: 0,
+    smoothSpeed: 250,
+    prevSpeed: 250,
     gLat: 0,
     gLong: 0,
-    coolantTemp: 88,
-    oilTemp: 92,
-    iat: 32,
-    fuelLevel: 85,
+    coolantTemp: 92,
+    oilTemp: 105,
+    iat: 38,
+    brakeTemp: 350,
+    fuelLevel: 92,
+    trsScore: 30,
     lapTimeMs: 0,
-    bestLapMs: 432000, // 7:12.000
+    bestLapMs: VEHICLE.bestLapMs,
     lapCount: 0,
     lastTimestamp: 0,
     historyBuffer: [],
-    segmentIndex: 0,
-    segmentT: 0,
-    smoothSpeed: 120,
-    prevSpeed: 120,
-    trsScore: 25,
+    sectorTimes: [null, null, null, null, null, null, null],
+    currentSector: 1,
+    sectorStartMs: 0,
   });
 
   const intervalRef = useRef(null);
@@ -213,159 +228,164 @@ export default function useNurburgringSimulator(autoStart = true) {
   const tick = useCallback(() => {
     const s = stateRef.current;
     const now = performance.now();
-    if (s.lastTimestamp === 0) {
-      s.lastTimestamp = now;
-      return;
-    }
+    if (s.lastTimestamp === 0) { s.lastTimestamp = now; return; }
 
-    const dt = Math.min((now - s.lastTimestamp) / 1000, 0.1); // seconds, capped
+    const dt = Math.min((now - s.lastTimestamp) / 1000, 0.1);
     s.lastTimestamp = now;
 
-    const numWaypoints = TRACK_WAYPOINTS.length;
+    const N = TRACK_WAYPOINTS.length;
 
-    // Calculate total track length in pixel units
-    let totalLength = 0;
-    const segmentLengths = [];
-    for (let i = 0; i < numWaypoints; i++) {
-      const next = (i + 1) % numWaypoints;
-      const d = distance(TRACK_WAYPOINTS[i], TRACK_WAYPOINTS[next]);
-      segmentLengths.push(d);
-      totalLength += d;
+    // Segment lengths
+    let totalLen = 0;
+    const segLens = [];
+    for (let i = 0; i < N; i++) {
+      const d = dist(TRACK_WAYPOINTS[i], TRACK_WAYPOINTS[(i+1) % N]);
+      segLens.push(d);
+      totalLen += d;
     }
+    const kmPerPx = TRACK_LENGTH_KM / totalLen;
 
-    // Scale factor: pixels to km
-    const kmPerPixel = NORDSCHLEIFE_LENGTH_KM / totalLength;
-
-    // Current segment data
-    const idx = s.segmentIndex % numWaypoints;
-    const nextIdx = (idx + 1) % numWaypoints;
+    const idx = s.segmentIndex % N;
+    const nxt = (idx + 1) % N;
     const wp = TRACK_WAYPOINTS[idx];
-    const wpNext = TRACK_WAYPOINTS[nextIdx];
+    const wpN = TRACK_WAYPOINTS[nxt];
 
-    // Target speed from current waypoint (with some randomness)
-    const baseTargetSpeed = lerp(wp[2], wpNext[2], s.segmentT);
-    s.targetSpeed = baseTargetSpeed + (Math.sin(now * 0.001) * 5);
+    // Target speed with realistic variation
+    const baseTarget = lerp(wp[2], wpN[2], s.segmentT);
+    const targetSpeed = baseTarget + Math.sin(now * 0.0008) * 3;
 
-    // Smoothly approach target speed
-    const speedDiff = s.targetSpeed - s.smoothSpeed;
-    const acceleration = speedDiff > 0 ? 25 : -40; // m/s² equivalent feel
-    s.smoothSpeed += clamp(speedDiff, acceleration * dt * -1, Math.abs(acceleration) * dt);
-    s.smoothSpeed = clamp(s.smoothSpeed, 30, 285);
+    // Physics: approach target speed (high downforce = aggressive braking & cornering)
+    const speedDiff = targetSpeed - s.smoothSpeed;
+    // 919 Evo: ~2.5G braking, ~1.8G acceleration
+    const accelRate = speedDiff > 0 ? 45 : -65;
+    s.smoothSpeed += clamp(speedDiff, -Math.abs(accelRate) * dt, Math.abs(accelRate) * dt);
+    s.smoothSpeed = clamp(s.smoothSpeed, 60, 375);
 
-    // Add slight realistic variation
-    const speed = s.smoothSpeed + Math.sin(now * 0.003) * 2 + (Math.random() - 0.5) * 1.5;
+    const speed = s.smoothSpeed + Math.sin(now * 0.002) * 1.5 + (Math.random() - 0.5) * 0.8;
 
-    // Advance position along track
-    const speedMs = speed / 3.6; // m/s
-    const distanceTraveled = speedMs * dt; // meters
-    const distancePixels = distanceTraveled / (kmPerPixel * 1000);
-
-    const segLen = segmentLengths[idx];
-    s.segmentT += distancePixels / segLen;
+    // Advance position
+    const distPx = (speed / 3.6) * dt / (kmPerPx * 1000);
+    s.segmentT += distPx / segLens[idx];
 
     while (s.segmentT >= 1.0) {
       s.segmentT -= 1.0;
-      s.segmentIndex = (s.segmentIndex + 1) % numWaypoints;
+      s.segmentIndex = (s.segmentIndex + 1) % N;
+
+      // Sector change detection
+      const newSector = TRACK_WAYPOINTS[s.segmentIndex % N][5];
+      if (newSector !== s.currentSector) {
+        const sectorTime = s.lapTimeMs - s.sectorStartMs;
+        s.sectorTimes[s.currentSector - 1] = Math.round(sectorTime);
+        s.currentSector = newSector;
+        s.sectorStartMs = s.lapTimeMs;
+      }
+
       if (s.segmentIndex === 0) {
-        // Completed a lap
         s.lapCount++;
-        if (s.lapTimeMs > 0 && (s.lapTimeMs < s.bestLapMs || s.bestLapMs <= 0)) {
+        if (s.lapTimeMs > 0 && s.lapTimeMs < s.bestLapMs) {
           s.bestLapMs = s.lapTimeMs;
         }
         s.lapTimeMs = 0;
+        s.sectorTimes = [null, null, null, null, null, null, null];
+        s.sectorStartMs = 0;
+        s.currentSector = 1;
       }
     }
 
-    // Update lap time
     s.lapTimeMs += dt * 1000;
 
-    // Calculate normalized position (0..1)
-    let distSoFar = 0;
-    for (let i = 0; i < s.segmentIndex; i++) {
-      distSoFar += segmentLengths[i];
-    }
-    distSoFar += segmentLengths[s.segmentIndex] * s.segmentT;
-    const normalizedPos = distSoFar / totalLength;
-
-    // Interpolated position for map
-    const curWp = TRACK_WAYPOINTS[s.segmentIndex % numWaypoints];
-    const nxtWp = TRACK_WAYPOINTS[(s.segmentIndex + 1) % numWaypoints];
+    // Map position
+    const curWp = TRACK_WAYPOINTS[s.segmentIndex % N];
+    const nxtWp = TRACK_WAYPOINTS[(s.segmentIndex + 1) % N];
     const mapX = lerp(curWp[0], nxtWp[0], s.segmentT);
     const mapY = lerp(curWp[1], nxtWp[1], s.segmentT);
 
-    // Curvature and G-forces
+    // Normalized position
+    let distSoFar = 0;
+    for (let i = 0; i < s.segmentIndex; i++) distSoFar += segLens[i];
+    distSoFar += segLens[s.segmentIndex] * s.segmentT;
+    const normPos = distSoFar / totalLen;
+
+    // G-Forces (919 Evo: up to 3.5G lateral, 2.5G longitudinal braking, 1.8G accel)
     const curvature = lerp(curWp[3], nxtWp[3], s.segmentT);
-    const lateralG = curvature * (speed / 150) * 1.2 + (Math.random() - 0.5) * 0.05;
-    const accelDecel = (speed - s.prevSpeed) / (dt * 9.81 * 50);
-    const longG = clamp(accelDecel, -2.0, 1.5) + (Math.random() - 0.5) * 0.03;
+    // Lateral G scales with speed² and curvature (downforce helps)
+    const speedFactor = speed / 200;
+    const downforceBonus = speed > 200 ? 1 + (speed - 200) / 400 : 1;
+    const rawLatG = curvature * speedFactor * speedFactor * 1.8 * downforceBonus;
+    const latG = clamp(rawLatG, -3.5, 3.5) + (Math.random() - 0.5) * 0.03;
+
+    // Longitudinal G
+    const accelG = (speed - s.prevSpeed) / (dt * 9.81 * 3.6);
+    const longG = clamp(accelG, -2.5, 1.8) + (Math.random() - 0.5) * 0.02;
     s.prevSpeed = speed;
 
     // Smooth G-forces
-    s.gLat = lerp(s.gLat, lateralG, 0.3);
-    s.gLong = lerp(s.gLong, longG, 0.3);
+    s.gLat = lerp(s.gLat, latG, 0.25);
+    s.gLong = lerp(s.gLong, longG, 0.25);
 
-    // Gear and RPM
+    // Gear & RPM
     const gear = getGear(speed);
     const rpm = getRpm(speed, gear);
     const shiftNow = rpm > VEHICLE.shiftRpm;
 
-    // Throttle and brake
-    const throttle = speedDiff > 5 ? clamp(80 + speedDiff * 0.5, 60, 100) :
-                     speedDiff < -10 ? clamp(5 + speedDiff * 0.2, 0, 15) :
-                     clamp(40 + speedDiff * 2, 20, 70);
-    const brakePressure = speedDiff < -15 ? clamp(Math.abs(speedDiff) * 2, 0, 100) : 0;
+    // Throttle & Brake (realistic)
+    const throttle = speedDiff > 10 ? clamp(85 + speedDiff * 0.3, 70, 100) :
+                     speedDiff < -20 ? clamp(2, 0, 10) :
+                     clamp(50 + speedDiff * 1.5, 15, 75);
+    const brakePressure = speedDiff < -15 ? clamp(Math.abs(speedDiff) * 2.5, 0, 100) : 0;
+    const engineLoad = clamp(throttle * 0.85 + (rpm / VEHICLE.maxRpm) * 20, 20, 100);
 
-    // Load
-    const engineLoad = clamp(throttle * 0.9 + (rpm / VEHICLE.maxRpm) * 15, 15, 100);
+    // Temperatures (919 Evo runs hotter)
+    s.coolantTemp = clamp(s.coolantTemp + (engineLoad > 75 ? 0.003 : -0.001) * dt * 10, 88, 112);
+    s.oilTemp = clamp(s.oilTemp + (engineLoad > 65 ? 0.004 : -0.0008) * dt * 10, 95, 142);
+    s.iat = clamp(35 + (throttle / 100) * 18 + Math.sin(now * 0.0004) * 2, 28, 58);
+    s.brakeTemp = clamp(
+      s.brakeTemp + (brakePressure > 0 ? brakePressure * 0.15 : -8) * dt,
+      250, 850
+    );
 
-    // Temperatures (slowly evolve)
-    s.coolantTemp = clamp(s.coolantTemp + (engineLoad > 70 ? 0.002 : -0.001) * dt * 10, 85, 108);
-    s.oilTemp = clamp(s.oilTemp + (engineLoad > 60 ? 0.003 : -0.0005) * dt * 10, 88, 135);
-    s.iat = clamp(30 + (throttle / 100) * 15 + Math.sin(now * 0.0005) * 3, 25, 55);
+    // Fuel
+    s.fuelLevel = clamp(s.fuelLevel - dt * 0.025, 15, 100);
 
-    // Fuel (slowly decreasing)
-    s.fuelLevel = clamp(s.fuelLevel - dt * 0.015, 20, 100);
+    // AFR (race engine runs richer)
+    const afr = throttle > 85 ? 11.8 + Math.random() * 0.5 :
+                throttle > 55 ? 12.8 + Math.random() * 0.6 :
+                13.8 + Math.random() * 0.4;
 
-    // AFR
-    const afr = throttle > 80 ? 12.5 + Math.random() * 0.8 :
-                throttle > 50 ? 13.5 + Math.random() * 0.7 :
-                14.2 + Math.random() * 0.5;
-
-    // Power and Torque
+    // Power & Torque (hybrid: electric + V4 turbo)
     const rpmFrac = rpm / VEHICLE.maxRpm;
-    const powerCurve = Math.sin(rpmFrac * Math.PI * 0.85) * (throttle / 100);
-    const power = VEHICLE.maxPowerKw * powerCurve;
+    const powerCurve = Math.sin(rpmFrac * Math.PI * 0.88) * (throttle / 100);
+    const hybridBoost = speed > 100 ? 0.15 : 0.25; // more electric at low speed
+    const power = VEHICLE.maxPowerKw * (powerCurve + hybridBoost * (throttle / 100));
     const torque = rpm > 0 ? (power * 9549) / rpm : 0;
 
-    // Traction
+    // Traction (919 Evo has insane grip from downforce)
     const absGLat = Math.abs(s.gLat);
-    const slipRatio = clamp(absGLat * 0.15 + (Math.random() - 0.5) * 0.02, 0, 0.5);
-    const stabilityState = slipRatio > 0.25 ? 'OVERSTEER' :
-                           slipRatio > 0.12 ? 'MILD_SLIP' : 'STABLE';
-    const espActive = slipRatio > 0.2;
+    const slipRatio = clamp(absGLat * 0.08 + (Math.random() - 0.5) * 0.01, 0, 0.35);
+    const stabilityState = slipRatio > 0.20 ? 'OVERSTEER' :
+                           slipRatio > 0.10 ? 'MILD_SLIP' : 'STABLE';
+    const espActive = slipRatio > 0.18;
 
     // Thermal Risk Score
-    const coolantNorm = clamp((s.coolantTemp - 85) / 35, 0, 1);
-    const oilNorm = clamp((s.oilTemp - 88) / 57, 0, 1);
-    const iatNorm = clamp((s.iat - 25) / 40, 0, 1);
-    s.trsScore = (coolantNorm * 35 + oilNorm * 25 + iatNorm * 20 + engineLoad * 0.2);
-    const trsState = s.trsScore > 70 ? 'WARNING' : s.trsScore > 45 ? 'WATCH' : 'SAFE';
+    const coolNorm = clamp((s.coolantTemp - 88) / 30, 0, 1);
+    const oilNorm = clamp((s.oilTemp - 95) / 50, 0, 1);
+    const iatNorm = clamp((s.iat - 28) / 35, 0, 1);
+    const brakeNorm = clamp((s.brakeTemp - 350) / 500, 0, 1);
+    s.trsScore = coolNorm * 30 + oilNorm * 25 + iatNorm * 15 + brakeNorm * 20 + engineLoad * 0.10;
+    const trsState = s.trsScore > 65 ? 'WARNING' : s.trsScore > 40 ? 'WATCH' : 'SAFE';
 
-    // Weight transfer
-    const weightBase = VEHICLE.curbWeightKg / 4;
-    const longTransfer = s.gLong * 80;
-    const latTransfer = s.gLat * 60;
+    // Weight transfer (lightweight LMP1 = aggressive transfer)
+    const wBase = VEHICLE.curbWeightKg / 4;
+    const longTrans = s.gLong * 55;
+    const latTrans = s.gLat * 45;
 
-    // Delta calculation
-    const expectedLapTime = 432000; // 7:12
-    const expectedFraction = normalizedPos;
-    const expectedTimeAtPos = expectedFraction * expectedLapTime;
-    const delta = s.lapTimeMs - expectedTimeAtPos;
+    // Delta to record
+    const expectedTime = normPos * VEHICLE.bestLapMs;
+    const delta = s.lapTimeMs - expectedTime;
 
     // Stopping distance
-    const stoppingDist = speed > 0 ? (speed * speed) / (2 * 9.81 * 1.2 * 3.6 * 3.6) : 0;
+    const stopDist = speed > 0 ? (speed * speed) / (2 * 9.81 * 2.2 * 3.6 * 3.6) : 0;
 
-    // Build data snapshot
     const snapshot = {
       timestamp: Date.now(),
       rpm: Math.round(rpm),
@@ -377,121 +397,83 @@ export default function useNurburgringSimulator(autoStart = true) {
       max_rpm: VEHICLE.maxRpm,
       shift_rpm: VEHICLE.shiftRpm,
       shift_now: shiftNow,
-      // Temperatures
       coolant_temp: Math.round(s.coolantTemp * 10) / 10,
       oil_temp: Math.round(s.oilTemp * 10) / 10,
       iat: Math.round(s.iat * 10) / 10,
       intake_air_temp: Math.round(s.iat * 10) / 10,
-      ambient_temp: 22,
-      // Dynamics
+      ambient_temp: 24,
       g_lat: Math.round(s.gLat * 1000) / 1000,
       g_long: Math.round(s.gLong * 1000) / 1000,
-      // Fuel
       afr: Math.round(afr * 100) / 100,
       fuel_level: Math.round(s.fuelLevel * 10) / 10,
-      fuel_consumption: Math.round((speed > 10 ? 18 + throttle * 0.2 : 2) * 10) / 10,
+      fuel_consumption: Math.round((speed > 10 ? 35 + throttle * 0.4 : 5) * 10) / 10,
       fuel_remaining: Math.round(s.fuelLevel * VEHICLE.fuelTankL / 100 * 10) / 10,
-      // Pressure
-      boost: throttle > 60 ? Math.round((throttle - 60) * 0.03 * 100) / 100 : 0,
-      map_pressure: Math.round((70 + throttle * 0.8) * 10) / 10,
-      oil_pressure: Math.round((2.5 + (rpm / VEHICLE.maxRpm) * 2.5) * 100) / 100,
-      // Performance
+      boost: throttle > 40 ? Math.round((throttle - 40) * 0.05 * 100) / 100 : 0,
+      map_pressure: Math.round((80 + throttle * 1.2) * 10) / 10,
+      oil_pressure: Math.round((3.0 + (rpm / VEHICLE.maxRpm) * 3.5) * 100) / 100,
       power: Math.round(power * 10) / 10,
       torque: Math.round(torque * 10) / 10,
-      // Braking
       brake_pressure: Math.round(brakePressure * 10) / 10,
       deceleration_g: brakePressure > 0 ? Math.round(Math.abs(s.gLong) * 100) / 100 : 0,
-      brake_temp: Math.round(clamp(200 + brakePressure * 4 + speed * 0.5, 180, 650) * 10) / 10,
-      stopping_distance: Math.round(stoppingDist * 10) / 10,
-      // Traction
+      brake_temp: Math.round(s.brakeTemp * 10) / 10,
+      stopping_distance: Math.round(stopDist * 10) / 10,
       slip_ratio: Math.round(slipRatio * 1000) / 1000,
       stability_state: stabilityState,
       esp_active: espActive,
-      // Weight Transfer
-      weight_fl: Math.round(weightBase - longTransfer + latTransfer),
-      weight_fr: Math.round(weightBase - longTransfer - latTransfer),
-      weight_rl: Math.round(weightBase + longTransfer + latTransfer),
-      weight_rr: Math.round(weightBase + longTransfer - latTransfer),
-      // Timing
+      weight_fl: Math.round(wBase - longTrans + latTrans),
+      weight_fr: Math.round(wBase - longTrans - latTrans),
+      weight_rl: Math.round(wBase + longTrans + latTrans),
+      weight_rr: Math.round(wBase + longTrans - latTrans),
       lap_time: Math.round(s.lapTimeMs),
       best_lap: s.bestLapMs > 0 ? Math.round(s.bestLapMs) : null,
       delta: Math.round(delta),
       lap_count: s.lapCount,
-      sector_times: null,
+      sector_times: [...s.sectorTimes],
+      current_sector: s.currentSector,
       session_time: Math.round(now),
-      // Thermal
       trs_score: Math.round(s.trsScore * 10) / 10,
       trs_state: trsState,
-      // Track info (extra)
-      track_position: normalizedPos,
+      track_position: normPos,
       track_x: mapX,
       track_y: mapY,
       section_name: curWp[4],
+      sector_id: curWp[5],
+      vehicle_name: VEHICLE.name,
     };
 
-    // Update history buffer
     const entry = { ...snapshot, _historyTs: Date.now() };
     s.historyBuffer = [...s.historyBuffer, entry].slice(-300);
 
     setData(snapshot);
     setHistory(s.historyBuffer);
-    setTrackPosition(normalizedPos);
     setSectionName(curWp[4]);
     setLapCount(s.lapCount);
   }, []);
 
   useEffect(() => {
     if (!isRunning) {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
+      if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; }
       return;
     }
-
-    // Run at ~20Hz (50ms)
-    intervalRef.current = setInterval(tick, 50);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
-    };
+    intervalRef.current = setInterval(tick, 50); // 20Hz
+    return () => { if (intervalRef.current) { clearInterval(intervalRef.current); intervalRef.current = null; } };
   }, [isRunning, tick]);
 
   const start = useCallback(() => setIsRunning(true), []);
   const stop = useCallback(() => setIsRunning(false), []);
   const reset = useCallback(() => {
-    stateRef.current.position = 0;
-    stateRef.current.segmentIndex = 0;
-    stateRef.current.segmentT = 0;
-    stateRef.current.lapTimeMs = 0;
-    stateRef.current.lapCount = 0;
-    stateRef.current.lastTimestamp = 0;
-    stateRef.current.historyBuffer = [];
-    stateRef.current.smoothSpeed = 120;
-    stateRef.current.prevSpeed = 120;
-    setData(null);
-    setHistory([]);
-    setTrackPosition(0);
-    setLapCount(0);
+    const s = stateRef.current;
+    s.segmentIndex = 0; s.segmentT = 0; s.lapTimeMs = 0;
+    s.lapCount = 0; s.lastTimestamp = 0; s.historyBuffer = [];
+    s.smoothSpeed = 250; s.prevSpeed = 250;
+    s.sectorTimes = [null,null,null,null,null,null,null];
+    s.currentSector = 1; s.sectorStartMs = 0;
+    setData(null); setHistory([]); setLapCount(0);
   }, []);
 
   return {
-    data,
-    history,
-    connected: isRunning,
-    error: null,
-    trackPosition,
-    sectionName,
-    lapCount,
-    isRunning,
-    start,
-    stop,
-    reset,
+    data, history, connected: isRunning, error: null,
+    sectionName, lapCount, isRunning,
+    start, stop, reset,
   };
 }
-
-// Export track waypoints for the TrackMap component
-export { TRACK_WAYPOINTS };

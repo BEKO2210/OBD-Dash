@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Gauge, Activity, Car, Wifi, WifiOff, Zap, ArrowLeft, Settings } from 'lucide-react';
+import { Gauge, Activity, Car, Wifi, WifiOff, Zap, ArrowLeft, Settings, Play, Pause } from 'lucide-react';
 import useOBDData from './hooks/useOBDData';
+import useNurburgringSimulator from './hooks/useNurburgringSimulator';
 import useAlerts from './hooks/useAlerts';
 import RaceMode from './layouts/RaceMode';
 import TelemetryMode from './layouts/TelemetryMode';
@@ -16,17 +17,22 @@ const MODES = [
 ];
 
 export default function App() {
-  const [view, setView] = useState('landing'); // 'landing', 'dashboard', 'settings'
+  const [view, setView] = useState('landing');
   const [mode, setMode] = useState('race');
-  const { data, history, connected, error } = useOBDData();
+  const [source, setSource] = useState('demo'); // 'demo' or 'obd'
+
+  // Both data sources
+  const sim = useNurburgringSimulator(true);
+  const obd = useOBDData();
+
+  // Use the active source
+  const { data, history, connected, error } = source === 'demo' ? sim : obd;
+
   const { alerts, dismissAlert, processDataAlerts } = useAlerts();
 
-  // Process incoming alerts from data
   useEffect(() => {
     processDataAlerts(data);
   }, [data, processDataAlerts]);
-
-  const currentMode = MODES.find((m) => m.id === mode);
 
   // Landing Page
   if (view === 'landing') {
@@ -37,6 +43,8 @@ export default function App() {
   if (view === 'settings') {
     return <SettingsPage onBack={() => setView('dashboard')} />;
   }
+
+  const isDemo = source === 'demo';
 
   // Dashboard View
   return (
@@ -58,7 +66,7 @@ export default function App() {
               APEX CORTEX
             </span>
             <span className="text-[9px] sm:text-[10px] tracking-[0.3em] text-neutral-500 font-rajdhani uppercase">
-              Racing Dashboard
+              {isDemo ? 'Nürburgring Demo' : 'Racing Dashboard'}
             </span>
           </div>
         </div>
@@ -88,29 +96,62 @@ export default function App() {
           })}
         </nav>
 
-        {/* Connection Status + Settings */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        {/* Connection + Source + Settings */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {error && (
-            <span className="text-red-400 text-[10px] sm:text-xs font-mono-tech hidden sm:inline">{error}</span>
+            <span className="text-red-400 text-[10px] sm:text-xs font-mono-tech hidden lg:inline">{error}</span>
           )}
+
+          {/* Data Source Toggle */}
+          <button
+            onClick={() => setSource(source === 'demo' ? 'obd' : 'demo')}
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-1 rounded border text-[10px] sm:text-xs font-mono-tech transition-all ${
+              isDemo
+                ? 'text-amber-400 border-amber-500/40 bg-amber-500/10 hover:bg-amber-500/20'
+                : 'text-blue-400 border-blue-500/40 bg-blue-500/10 hover:bg-blue-500/20'
+            }`}
+            title={isDemo ? 'Switch to OBD' : 'Switch to Demo'}
+          >
+            {isDemo ? <Play className="w-3 h-3" /> : <Wifi className="w-3 h-3" />}
+            <span className="hidden sm:inline">{isDemo ? 'DEMO' : 'OBD'}</span>
+          </button>
+
+          {/* Demo Play/Pause */}
+          {isDemo && (
+            <button
+              onClick={() => sim.isRunning ? sim.stop() : sim.start()}
+              className={`flex items-center px-1.5 py-1 rounded border transition-all ${
+                sim.isRunning
+                  ? 'text-green-400 border-green-500/40 bg-green-500/10'
+                  : 'text-neutral-500 border-neutral-700/50 bg-neutral-900/40'
+              }`}
+              title={sim.isRunning ? 'Pause simulation' : 'Start simulation'}
+            >
+              {sim.isRunning ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+            </button>
+          )}
+
+          {/* Connection Status */}
           <div
-            className={`flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 rounded border text-[10px] sm:text-xs font-mono-tech ${
+            className={`flex items-center gap-1 sm:gap-1.5 px-2 sm:px-2.5 py-1 rounded border text-[10px] sm:text-xs font-mono-tech ${
               connected
                 ? 'text-green-400 border-green-600/40 bg-green-900/20'
                 : 'text-red-400 border-red-600/40 bg-red-900/20'
             }`}
           >
             {connected ? (
-              <Wifi className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+              <Wifi className="w-3 h-3" />
             ) : (
-              <WifiOff className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-pulse" />
+              <WifiOff className="w-3 h-3 animate-pulse" />
             )}
-            <span className="hidden sm:inline">{connected ? 'LIVE' : 'OFFLINE'}</span>
+            <span className="hidden sm:inline">{connected ? 'LIVE' : 'OFF'}</span>
           </div>
+
+          {/* Settings */}
           <button
             onClick={() => setView('settings')}
-            className="flex items-center gap-1 px-2 py-1 rounded border border-neutral-700/50 bg-neutral-900/40
-                       text-neutral-500 hover:text-amber-400 hover:border-amber-500/30 transition-all duration-200"
+            className="flex items-center px-1.5 py-1 rounded border border-neutral-700/50 bg-neutral-900/40
+                       text-neutral-500 hover:text-amber-400 hover:border-amber-500/30 transition-all"
             title="Settings"
           >
             <Settings className="w-3.5 h-3.5" />
@@ -129,8 +170,6 @@ export default function App() {
         {mode === 'street' && (
           <StreetMode data={data} history={history} connected={connected} />
         )}
-
-        {/* Alert Overlay */}
         <AlertSystem alerts={alerts} onDismiss={dismissAlert} />
       </main>
     </div>
