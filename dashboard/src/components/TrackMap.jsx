@@ -88,7 +88,7 @@ export default function TrackMap({ trackX, trackY, sectionName, className = '' }
   return (
     <div className={`relative ${className}`}>
       <svg
-        viewBox="170 25 640 590"
+        viewBox="230 30 560 610"
         className="w-full h-full"
         preserveAspectRatio="xMidYMid meet"
       >
@@ -149,13 +149,13 @@ export default function TrackMap({ trackX, trackY, sectionName, className = '' }
 
         {/* Start/Finish line */}
         <line
-          x1={495} y1={548} x2={508} y2={562}
+          x1={690} y1={565} x2={700} y2={580}
           stroke="#f59e0b"
           strokeWidth={3}
           opacity={0.7}
         />
         <text
-          x={512} y={558}
+          x={705} y={575}
           fill="#f59e0b"
           fontSize="10"
           fontFamily="'Orbitron', sans-serif"
@@ -166,10 +166,10 @@ export default function TrackMap({ trackX, trackY, sectionName, className = '' }
         </text>
 
         {/* Distance markers */}
-        <text x={192} y={48} fill="#555" fontSize="8" fontFamily="'Share Tech Mono'">
+        <text x={242} y={48} fill="#555" fontSize="8" fontFamily="'Share Tech Mono'">
           20.832 km NORDSCHLEIFE
         </text>
-        <text x={192} y={60} fill="#444" fontSize="7" fontFamily="'Share Tech Mono'">
+        <text x={242} y={60} fill="#444" fontSize="7" fontFamily="'Share Tech Mono'">
           RECORD: 5:19.546 — PORSCHE 919 EVO
         </text>
 
