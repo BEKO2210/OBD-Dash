@@ -162,7 +162,7 @@ export default function App() {
       {/* Main Content */}
       <main className="flex-1 overflow-hidden relative">
         {mode === 'race' && (
-          <RaceMode data={data} history={history} connected={connected} />
+          <RaceMode data={data} history={history} connected={connected} isDemo={isDemo} isRunning={isDemo ? sim.isRunning : connected} />
         )}
         {mode === 'telemetry' && (
           <TelemetryMode data={data} history={history} connected={connected} />
