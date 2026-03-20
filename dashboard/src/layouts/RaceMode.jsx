@@ -87,19 +87,19 @@ export default function RaceMode({ data, history, connected, isDemo = false, isR
         </div>
       </div>
 
-      {/* MIDDLE ROW: Video | RPM | G-Force | AFR */}
-      <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 min-h-0">
-        <VideoSync
-          lapTimeMs={data?.lap_time ?? 0}
-          isRunning={isRunning}
-          isDemo={isDemo}
-          className="h-full min-h-[120px]"
-        />
+      {/* Audio-only engine sound bar */}
+      <VideoSync
+        lapTimeMs={data?.lap_time ?? 0}
+        isRunning={isRunning}
+        isDemo={isDemo}
+        className="shrink-0"
+      />
+
+      {/* MIDDLE ROW: RPM | G-Force | AFR */}
+      <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 min-h-0">
         <RPMGauge data={data} />
         <GForceBall data={data} history={history} />
-        <div className="hidden sm:block">
-          <AFRMeter data={data} />
-        </div>
+        <AFRMeter data={data} />
       </div>
 
       {/* BOTTOM ROW: Thermal | Shift | Traction */}

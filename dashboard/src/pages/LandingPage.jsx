@@ -351,14 +351,13 @@ export default function LandingPage({ onEnterDashboard }) {
             </p>
           </div>
 
-          {/* Video + Track Map + Live Stats */}
-          {/* Onboard Video (full width, synced) */}
+          {/* Engine sound bar (audio only, no video) */}
           <div className="mb-3 sm:mb-4">
             <VideoSync
               lapTimeMs={data?.lap_time ?? 0}
               isRunning={isRunning}
               isDemo={true}
-              className="h-[200px] sm:h-[300px] lg:h-[400px]"
+              className=""
             />
           </div>
 
