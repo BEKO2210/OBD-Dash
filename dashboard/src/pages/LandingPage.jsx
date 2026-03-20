@@ -250,6 +250,7 @@ export default function LandingPage({ onEnterDashboard }) {
           <TrackMap
             trackX={data?.track_x}
             trackY={data?.track_y}
+            trackPosition={data?.track_position ?? 0}
             sectionName={null}
             className="h-[150px] sm:h-[200px]"
           />
@@ -371,6 +372,7 @@ export default function LandingPage({ onEnterDashboard }) {
               <TrackMap
                 trackX={data?.track_x}
                 trackY={data?.track_y}
+                trackPosition={data?.track_position ?? 0}
                 sectionName={sectionName}
                 className="h-full w-full"
               />
