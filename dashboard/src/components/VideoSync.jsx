@@ -10,7 +10,7 @@ import { Film, Upload, X, Volume2, VolumeX, Maximize2, Minimize2, RotateCcw } fr
 
 // Default: Porsche 919 Evo Nürburgring record lap onboard
 const DEFAULT_YT_ID = 'PQmSUHhP3ug';
-const DEFAULT_VIDEO_OFFSET = 0;
+const DEFAULT_VIDEO_OFFSET = 5; // Original video has 5s intro before lap starts
 
 export default function VideoSync({
   lapTimeMs = 0,
