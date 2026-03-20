@@ -57,7 +57,7 @@ export default function WeightTransfer({ data }) {
         </span>
       </div>
 
-      <svg viewBox="0 0 200 220" className="w-full max-w-[220px] mx-auto">
+      <svg viewBox="0 0 200 220" className="w-full mx-auto">
         {/* Car body outline */}
         <path
           d="M 60 35 L 140 35 C 155 35 160 45 160 55 L 160 165 C 160 180 155 190 140 190 L 60 190 C 45 190 40 180 40 165 L 40 55 C 40 45 45 35 60 35 Z"
