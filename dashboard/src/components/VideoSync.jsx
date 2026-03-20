@@ -2,8 +2,8 @@
  * VideoSync — Audio-only engine sound from Nürburgring onboard video.
  *
  * The YouTube iframe is kept in the DOM (hidden) so audio still plays.
- * Only a compact audio control bar is shown — no video visible.
- * Syncs playback position to simulator lap time.
+ * Playback rate is tied to RPM — higher RPM = higher pitched engine sound.
+ * Playback position is synced to simulator lap time.
  */
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Volume2, VolumeX, Music, RotateCcw, Upload, X } from 'lucide-react';
@@ -12,8 +12,40 @@ import { Volume2, VolumeX, Music, RotateCcw, Upload, X } from 'lucide-react';
 const DEFAULT_YT_ID = 'PQmSUHhP3ug';
 const DEFAULT_VIDEO_OFFSET = 5; // Original video has 5s intro before lap starts
 
+// 919 Evo RPM range for playback rate mapping
+const RPM_MIN = 3000;   // Below this → minimum rate
+const RPM_MID = 7000;   // Reference RPM (original recording) → rate 1.0
+const RPM_MAX = 9200;   // Redline → maximum rate
+const RATE_MIN = 0.6;   // Playback rate at low RPM
+const RATE_MAX = 1.4;   // Playback rate at redline
+
+// YouTube only supports these discrete rates
+const YT_RATES = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
+function rpmToRate(rpm) {
+  if (!rpm || rpm < RPM_MIN) return RATE_MIN;
+  if (rpm > RPM_MAX) return RATE_MAX;
+  // Linear interpolation: RPM_MIN→RATE_MIN, RPM_MID→1.0, RPM_MAX→RATE_MAX
+  if (rpm <= RPM_MID) {
+    return RATE_MIN + ((rpm - RPM_MIN) / (RPM_MID - RPM_MIN)) * (1.0 - RATE_MIN);
+  }
+  return 1.0 + ((rpm - RPM_MID) / (RPM_MAX - RPM_MID)) * (RATE_MAX - 1.0);
+}
+
+function nearestYtRate(rate) {
+  let best = 1;
+  let bestDiff = Infinity;
+  for (const r of YT_RATES) {
+    const d = Math.abs(r - rate);
+    if (d < bestDiff) { bestDiff = d; best = r; }
+  }
+  return best;
+}
+
 export default function VideoSync({
   lapTimeMs = 0,
+  rpm = 0,
+  speed = 0,
   isRunning = false,
   isDemo = false,
   className = '',
@@ -21,12 +53,13 @@ export default function VideoSync({
   const videoRef = useRef(null);
   const ytPlayerRef = useRef(null);
   const [videoSource, setVideoSource] = useState({ type: 'youtube', ytId: DEFAULT_YT_ID });
-  const [muted, setMuted] = useState(true); // Start muted (browser autoplay policy)
+  const [muted, setMuted] = useState(true);
   const [showDropzone, setShowDropzone] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [videoOffset, setVideoOffset] = useState(DEFAULT_VIDEO_OFFSET);
   const [syncActive, setSyncActive] = useState(true);
   const lastSyncRef = useRef(0);
+  const lastRateRef = useRef(1);
   const iframeKeyRef = useRef(0);
 
   // ── YouTube ID Extraction ──────────────────────────────────────────────
@@ -58,7 +91,7 @@ export default function VideoSync({
 
   // ── File Pick ────────────────────────────────────────────────────────
   const handleFile = useCallback((file) => {
-    if (!file || !file.type.startsWith('video/') && !file.type.startsWith('audio/')) return;
+    if (!file || (!file.type.startsWith('video/') && !file.type.startsWith('audio/'))) return;
     const url = URL.createObjectURL(file);
     setVideoSource({ type: 'file', url, name: file.name });
     setShowDropzone(false);
@@ -102,6 +135,30 @@ export default function VideoSync({
     if (!videoSource || videoSource.type !== 'youtube') return;
     ytCommand(muted ? 'mute' : 'unMute');
   }, [muted, videoSource, ytCommand]);
+
+  // ── RPM → Playback Rate (engine sound pitch) ──────────────────────────
+  useEffect(() => {
+    if (!videoSource || !isRunning || !isDemo) return;
+    const targetRate = rpmToRate(rpm);
+
+    // HTML5 video/audio — smooth continuous rate
+    if (videoSource.type !== 'youtube' && videoRef.current) {
+      // Smooth transition: move 30% toward target each tick
+      const current = videoRef.current.playbackRate || 1;
+      const smoothed = current + (targetRate - current) * 0.3;
+      const clamped = Math.max(0.5, Math.min(2.0, smoothed));
+      videoRef.current.playbackRate = clamped;
+    }
+
+    // YouTube — discrete rates, only change when bucket changes
+    if (videoSource.type === 'youtube') {
+      const ytRate = nearestYtRate(targetRate);
+      if (ytRate !== lastRateRef.current) {
+        ytCommand('setPlaybackRate', [ytRate]);
+        lastRateRef.current = ytRate;
+      }
+    }
+  }, [rpm, videoSource, isRunning, isDemo, ytCommand]);
 
   // ── Sync playback position with lap time ──────────────────────────────
   useEffect(() => {
@@ -157,10 +214,13 @@ export default function VideoSync({
     setVideoSource(null);
   }, [videoSource]);
 
-  // Build YouTube embed URL — autoplay + controls off
+  // Build YouTube embed URL
   const ytEmbedUrl = videoSource?.type === 'youtube'
     ? `https://www.youtube-nocookie.com/embed/${videoSource.ytId}?enablejsapi=1&autoplay=1&mute=${muted ? 1 : 0}&controls=0&modestbranding=1&rel=0&showinfo=0&iv_load_policy=3&playsinline=1&loop=1&playlist=${videoSource.ytId}`
     : null;
+
+  // Current playback rate for display
+  const currentRate = rpmToRate(rpm);
 
   // ── Render: No source loaded ────────────────────────────────────────
   if (!videoSource) {
@@ -260,7 +320,7 @@ export default function VideoSync({
                   className="w-[2px] bg-amber-500/60 rounded-full"
                   style={{
                     height: `${h * 100}%`,
-                    animation: `audioBar 0.${4 + i}s ease-in-out infinite alternate`,
+                    animation: `audioBar ${0.15 + (1.1 - currentRate) * 0.3}s ease-in-out infinite alternate`,
                   }}
                 />
               ))}
@@ -268,12 +328,40 @@ export default function VideoSync({
           )}
         </div>
 
+        {/* RPM-linked rate indicator */}
+        {isRunning && isDemo && rpm > 0 && (
+          <div className="hidden sm:flex items-center gap-1.5">
+            <span className="font-mono-tech text-[8px] text-neutral-600">
+              {Math.round(rpm)} RPM
+            </span>
+            <div className="w-12 h-1 bg-neutral-800 rounded-full overflow-hidden">
+              <div
+                className="h-full rounded-full transition-all duration-150"
+                style={{
+                  width: `${Math.min(100, ((rpm - RPM_MIN) / (RPM_MAX - RPM_MIN)) * 100)}%`,
+                  backgroundColor: rpm > 8500 ? '#ef4444' : rpm > 7000 ? '#f59e0b' : '#22c55e',
+                }}
+              />
+            </div>
+            <span className="font-mono-tech text-[7px] text-neutral-600">
+              ×{currentRate.toFixed(2)}
+            </span>
+          </div>
+        )}
+
+        {/* Speed indicator */}
+        {isRunning && isDemo && speed > 0 && (
+          <span className="font-mono-tech text-[8px] text-neutral-500 hidden sm:inline">
+            {Math.round(speed)} km/h
+          </span>
+        )}
+
         {/* Label */}
-        <span className="font-mono-tech text-[9px] text-neutral-500 hidden sm:inline">
-          {videoSource.type === 'youtube' ? '919 EVO ONBOARD' : videoSource.name || 'CUSTOM AUDIO'}
+        <span className="font-mono-tech text-[9px] text-neutral-500 hidden lg:inline">
+          {videoSource.type === 'youtube' ? '919 EVO' : videoSource.name || 'AUDIO'}
         </span>
 
-        {/* Mute/Unmute — prominent when muted */}
+        {/* Mute/Unmute */}
         <button
           onClick={() => {
             const next = !muted;

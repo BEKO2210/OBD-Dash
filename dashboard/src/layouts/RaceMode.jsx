@@ -90,6 +90,8 @@ export default function RaceMode({ data, history, connected, isDemo = false, isR
       {/* Audio-only engine sound bar */}
       <VideoSync
         lapTimeMs={data?.lap_time ?? 0}
+        rpm={data?.rpm ?? 0}
+        speed={data?.speed ?? 0}
         isRunning={isRunning}
         isDemo={isDemo}
         className="shrink-0"
