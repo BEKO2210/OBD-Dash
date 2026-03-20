@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Gauge, Activity, Car, Wifi, WifiOff, Zap } from 'lucide-react';
+import { Gauge, Activity, Car, Wifi, WifiOff, Zap, ArrowLeft } from 'lucide-react';
 import useOBDData from './hooks/useOBDData';
 import useAlerts from './hooks/useAlerts';
 import RaceMode from './layouts/RaceMode';
 import TelemetryMode from './layouts/TelemetryMode';
 import StreetMode from './layouts/StreetMode';
 import AlertSystem from './panels/AlertSystem';
+import LandingPage from './pages/LandingPage';
 
 const MODES = [
   { id: 'race', label: 'RACE', icon: Gauge, color: 'text-red-400 border-red-500 bg-red-500/10' },
@@ -14,6 +15,7 @@ const MODES = [
 ];
 
 export default function App() {
+  const [view, setView] = useState('landing'); // 'landing' or 'dashboard'
   const [mode, setMode] = useState('race');
   const { data, history, connected, error } = useOBDData();
   const { alerts, dismissAlert, processDataAlerts } = useAlerts();
@@ -25,12 +27,25 @@ export default function App() {
 
   const currentMode = MODES.find((m) => m.id === mode);
 
+  // Landing Page
+  if (view === 'landing') {
+    return <LandingPage onEnterDashboard={() => setView('dashboard')} />;
+  }
+
+  // Dashboard View
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex flex-col">
       {/* Header Bar */}
       <header className="flex items-center justify-between px-4 py-2 border-b border-neutral-800/60 bg-neutral-950/90 backdrop-blur-md z-50">
-        {/* Logo */}
+        {/* Logo + Back */}
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => setView('landing')}
+            className="flex items-center gap-1 text-neutral-500 hover:text-amber-400 transition-colors mr-2"
+            title="Back to Landing"
+          >
+            <ArrowLeft className="w-4 h-4" />
+          </button>
           <Zap className="w-6 h-6 text-amber-400" />
           <div className="flex flex-col leading-none">
             <span className="font-orbitron text-sm font-bold tracking-[0.25em] text-amber-400 text-glow-amber">

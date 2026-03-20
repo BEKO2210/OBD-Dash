@@ -1,16 +1,14 @@
-import { useOBDData } from '../hooks/useOBDData';
+import React from 'react';
 
-export default function FuelStrategy() {
-  const { data } = useOBDData();
-  const fuel = data?.calc?.fuel || {};
-  const obd = data?.obd || {};
+export default function FuelStrategy({ data }) {
+  const fuelLevel = data?.fuel_level ?? 0;
+  const afr = data?.afr ?? 14.7;
+  const consumption = data?.fuel_consumption ?? 0;
+  const fuelRemaining = data?.fuel_remaining ?? 0;
 
-  const fuelLevel = obd.fuel_level ?? 0;
-  const afr = fuel.afr ?? 14.7;
-  const afrStatus = fuel.afr_status ?? 'stoich';
-  const consumption = fuel.consumption_l100km ?? 0;
-  const range = fuel.range_km ?? 0;
-  const pitWindow = fuel.pit_window_laps ?? 0;
+  const afrStatus = afr < 12.5 ? 'rich' : afr < 13.5 ? 'optimal_race' : afr < 15.0 ? 'stoich' : 'lean';
+  const range = consumption > 0 ? (fuelRemaining / consumption) * 100 : 0;
+  const pitWindow = range > 0 ? Math.floor(range / 20.8) : 0; // Nordschleife laps
 
   const statusColors = {
     lean: 'text-blue-400', stoich: 'text-green-400',
@@ -37,7 +35,7 @@ export default function FuelStrategy() {
         </div>
         <div>
           <span className="text-xs text-neutral-500">Pit Window</span>
-          <p className="text-lg font-bold text-white">{pitWindow.toFixed(0)} laps</p>
+          <p className="text-lg font-bold text-white">{pitWindow} laps</p>
         </div>
       </div>
       <div className="mt-3">
