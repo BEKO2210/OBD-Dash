@@ -6,7 +6,7 @@ const SWEEP = 240;
 const START = 150;
 const R = 70;
 const CX = 100;
-const CY = 100;
+const CY = 95;
 
 function polarToXY(cx, cy, r, deg) {
   const rad = ((deg - 90) * Math.PI) / 180;
@@ -44,25 +44,22 @@ export default function SpeedMeter({ data }) {
   }, [useMph, maxSpeed]);
 
   return (
-    <div className="panel-carbon p-4 flex flex-col items-center">
+    <div className="panel-carbon p-2 sm:p-4 flex flex-col items-center">
       {/* Big digital display */}
       <div className="text-center mb-1">
-        <div
-          className="font-orbitron text-6xl font-black text-amber-400 text-glow-amber leading-none tracking-tight"
-          style={{ minWidth: '200px' }}
-        >
+        <div className="font-orbitron text-4xl sm:text-5xl md:text-6xl font-black text-amber-400 text-glow-amber leading-none tracking-tight">
           {formatSpeed(speed)}
         </div>
         <button
           onClick={() => setUseMph((p) => !p)}
-          className="text-xs font-mono-tech text-neutral-500 hover:text-amber-400 transition-colors mt-1 tracking-widest"
+          className="text-[10px] sm:text-xs font-mono-tech text-neutral-500 hover:text-amber-400 transition-colors mt-1 tracking-widest"
         >
           {useMph ? 'MPH' : 'KM/H'}
         </button>
       </div>
 
-      {/* Small analog arc */}
-      <svg viewBox="0 0 200 130" className="w-full -mt-1">
+      {/* Analog arc gauge */}
+      <svg viewBox="0 0 200 185" className="w-full -mt-1">
         {/* Background arc */}
         <path
           d={arcPath(CX, CY, R, START, START + SWEEP)}
