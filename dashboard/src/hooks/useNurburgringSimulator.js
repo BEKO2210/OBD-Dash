@@ -11,9 +11,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 
 // ── Nordschleife Track Waypoints ────────────────────────────────────────────
-// Accurate GPS-derived layout of the 20.832 km Nürburgring Nordschleife
-// Scaled to SVG viewBox. Oriented: North=top, East=right.
-// Racing direction: clockwise on map (S→N on east side, N→S on west side)
+// Matched to the SVG track map coordinate system (viewBox ~210-780 x 50-750)
+// These define simulator physics AND map to the TrackMap SVG sectors.
 // [x, y, targetSpeed(km/h), curvature, sectionName, sectorId]
 //
 // 919 Evo telemetry reference speeds:
@@ -21,134 +20,101 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 // Karussell: 100-105 km/h | Adenauer Forst: 90-120 km/h | Bergwerk: 95 km/h
 export const TRACK_WAYPOINTS = [
   // ═══ SECTOR 1: Start/Ziel → T13 → Hatzenbach → Hocheichen ═══
-  // Start/Finish at southeast, heading north along the east leg
-  [695, 572, 280, 0, 'Start/Ziel', 1],
-  [710, 555, 275, 0.08, 'Start/Ziel', 1],
-  [722, 535, 260, 0.15, 'T13', 1],
-  [730, 512, 240, 0.22, 'T13', 1],
-  [735, 488, 220, 0.30, 'T13', 1],
-  // Hatzenbach - tight S-curves heading north
-  [738, 462, 195, 0.42, 'Hatzenbach', 1],
-  [742, 435, 175, 0.50, 'Hatzenbach', 1],
-  [748, 408, 180, -0.38, 'Hatzenbach', 1],
-  [752, 382, 195, -0.25, 'Hatzenbach', 1],
-  // Hocheichen - fast left kink, still heading north
-  [755, 355, 240, -0.15, 'Hocheichen', 1],
-  [756, 328, 255, -0.08, 'Hocheichen', 1],
-  [754, 300, 265, 0.05, 'Hocheichen', 1],
+  [735, 680, 280, 0, 'Start/Ziel', 1],
+  [748, 648, 270, 0.10, 'T13', 1],
+  [755, 618, 250, 0.20, 'T13', 1],
+  [760, 588, 230, 0.28, 'T13', 1],
+  [762, 558, 200, 0.40, 'Hatzenbach', 1],
+  [755, 530, 180, 0.48, 'Hatzenbach', 1],
+  [742, 448, 175, -0.35, 'Hatzenbach', 1],
+  [748, 405, 190, -0.22, 'Hatzenbach', 1],
+  [755, 370, 240, -0.12, 'Hocheichen', 1],
+  [762, 330, 255, -0.06, 'Hocheichen', 1],
+  [762, 290, 265, 0.04, 'Hocheichen', 1],
 
   // ═══ SECTOR 2: Quiddelbacher Höhe → Flugplatz → Schwedenkreuz ═══
-  // Continuing north along the east side
-  [750, 272, 300, 0.04, 'Quiddelbacher Höhe', 2],
-  [745, 245, 310, 0.02, 'Quiddelbacher Höhe', 2],
-  // Flugplatz - famous jump, crest over hill
-  [738, 218, 295, 0.18, 'Flugplatz', 2],
-  [728, 192, 240, 0.38, 'Flugplatz', 2],
-  [715, 170, 220, 0.32, 'Flugplatz', 2],
-  // Schwedenkreuz - flat-out kink heading northwest
-  [698, 150, 340, -0.10, 'Schwedenkreuz', 2],
-  [678, 132, 350, -0.08, 'Schwedenkreuz', 2],
-  [655, 118, 335, -0.12, 'Schwedenkreuz', 2],
+  [758, 260, 300, 0.03, 'Quiddelbacher Höhe', 2],
+  [750, 232, 295, 0.16, 'Flugplatz', 2],
+  [738, 205, 240, 0.35, 'Flugplatz', 2],
+  [722, 180, 220, 0.30, 'Flugplatz', 2],
+  [700, 155, 340, -0.08, 'Schwedenkreuz', 2],
+  [678, 138, 350, -0.06, 'Schwedenkreuz', 2],
+  [650, 122, 335, -0.10, 'Schwedenkreuz', 2],
 
   // ═══ SECTOR 3: Aremberg → Fuchsröhre → Adenauer Forst ═══
-  // Curving westward across the top of the circuit
-  [628, 108, 260, -0.35, 'Aremberg', 3],
-  [598, 98, 190, -0.52, 'Aremberg', 3],
-  [570, 88, 210, -0.28, 'Aremberg', 3],
-  // Fuchsröhre - steep downhill heading west, huge speed
-  [538, 78, 310, -0.06, 'Fuchsröhre', 3],
-  [502, 70, 340, 0.03, 'Fuchsröhre', 3],
-  [465, 65, 355, 0.04, 'Fuchsröhre', 3],
-  [428, 62, 330, 0.08, 'Fuchsröhre', 3],
-  // Adenauer Forst - tight hairpin complex at the northwest corner
-  [395, 60, 220, 0.32, 'Adenauer Forst', 3],
-  [365, 62, 140, 0.58, 'Adenauer Forst', 3],
-  [340, 70, 95, 0.68, 'Adenauer Forst', 3],
-  [322, 85, 110, 0.52, 'Adenauer Forst', 3],
-  [310, 105, 150, 0.30, 'Adenauer Forst', 3],
+  [618, 110, 260, -0.32, 'Aremberg', 3],
+  [585, 98, 195, -0.50, 'Aremberg', 3],
+  [555, 90, 280, -0.12, 'Fuchsröhre', 3],
+  [518, 82, 340, 0.02, 'Fuchsröhre', 3],
+  [478, 76, 355, 0.04, 'Fuchsröhre', 3],
+  [435, 72, 330, 0.06, 'Fuchsröhre', 3],
+  [398, 68, 220, 0.30, 'Adenauer Forst', 3],
+  [362, 68, 140, 0.55, 'Adenauer Forst', 3],
+  [335, 78, 95, 0.65, 'Adenauer Forst', 3],
+  [315, 95, 115, 0.48, 'Adenauer Forst', 3],
+  [300, 118, 155, 0.28, 'Adenauer Forst', 3],
 
   // ═══ SECTOR 4: Metzgesfeld → Kallenhard → Wehrseifen → Breidscheid ═══
-  // Heading south along the west leg
-  [300, 130, 210, -0.15, 'Metzgesfeld', 4],
-  [292, 158, 235, -0.10, 'Metzgesfeld', 4],
-  [285, 188, 250, -0.06, 'Metzgesfeld', 4],
-  // Kallenhard - medium-speed right curves
-  [278, 218, 205, 0.30, 'Kallenhard', 4],
-  [270, 248, 180, 0.42, 'Kallenhard', 4],
-  [264, 278, 190, 0.28, 'Kallenhard', 4],
-  // Wehrseifen - tight left hairpin
-  [260, 308, 145, -0.52, 'Wehrseifen', 4],
-  [258, 338, 105, -0.62, 'Wehrseifen', 4],
-  [262, 365, 125, -0.38, 'Wehrseifen', 4],
-  // Breidscheid - heading south
-  [268, 392, 230, 0.08, 'Breidscheid', 4],
-  [272, 418, 245, 0.04, 'Breidscheid', 4],
+  [278, 160, 210, -0.12, 'Metzgesfeld', 4],
+  [265, 198, 240, -0.08, 'Metzgesfeld', 4],
+  [255, 238, 205, 0.28, 'Kallenhard', 4],
+  [250, 275, 180, 0.40, 'Kallenhard', 4],
+  [248, 310, 145, -0.50, 'Wehrseifen', 4],
+  [248, 348, 105, -0.60, 'Wehrseifen', 4],
+  [254, 380, 125, -0.35, 'Wehrseifen', 4],
+  [260, 415, 230, 0.06, 'Breidscheid', 4],
+  [264, 450, 245, 0.04, 'Breidscheid', 4],
 
   // ═══ SECTOR 5: Ex-Mühle → Bergwerk → Karussell ═══
-  // Continuing south on west side
-  [274, 442, 215, -0.18, 'Ex-Mühle', 5],
-  [272, 465, 185, -0.32, 'Ex-Mühle', 5],
-  // Bergwerk - infamous blind left
-  [268, 488, 125, -0.55, 'Bergwerk', 5],
-  [264, 508, 95, -0.65, 'Bergwerk', 5],
-  [268, 525, 130, 0.28, 'Bergwerk', 5],
-  // Karussell - banked 210° left turn, heading east after
-  [276, 540, 115, 0.52, 'Karussell', 5],
-  [288, 552, 105, 0.68, 'Karussell', 5],
-  [305, 558, 100, 0.72, 'Karussell', 5],
-  [325, 560, 100, 0.68, 'Karussell', 5],
-  [345, 556, 108, 0.55, 'Karussell', 5],
-  [362, 545, 135, 0.35, 'Karussell', 5],
+  [264, 480, 215, -0.16, 'Ex-Mühle', 5],
+  [260, 508, 130, -0.52, 'Bergwerk', 5],
+  [252, 532, 95, -0.62, 'Bergwerk', 5],
+  [248, 558, 130, 0.25, 'Bergwerk', 5],
+  [254, 582, 115, 0.50, 'Karussell', 5],
+  [270, 605, 105, 0.65, 'Karussell', 5],
+  [292, 620, 100, 0.70, 'Karussell', 5],
+  [318, 628, 100, 0.65, 'Karussell', 5],
+  [348, 630, 108, 0.52, 'Karussell', 5],
+  [378, 618, 135, 0.32, 'Karussell', 5],
 
   // ═══ SECTOR 6: Hohe Acht → Wippermann → Brünnchen → Pflanzgarten ═══
-  // Heading east through the middle-south of the circuit
-  [380, 530, 210, -0.15, 'Hohe Acht', 6],
-  [398, 518, 240, -0.10, 'Hohe Acht', 6],
-  [418, 508, 265, 0.08, 'Wippermann', 6],
-  // Brünnchen - fast sweeping section
-  [438, 502, 240, 0.25, 'Brünnchen', 6],
-  [458, 498, 215, 0.35, 'Brünnchen', 6],
-  [478, 502, 230, 0.20, 'Brünnchen', 6],
-  // Pflanzgarten - blind crests and drops, dramatic
-  [498, 510, 285, -0.10, 'Pflanzgarten', 6],
-  [518, 522, 295, -0.15, 'Pflanzgarten', 6],
-  [535, 538, 245, 0.28, 'Pflanzgarten', 6],
-  [548, 555, 200, 0.40, 'Pflanzgarten', 6],
+  [405, 598, 210, -0.12, 'Hohe Acht', 6],
+  [432, 578, 245, -0.08, 'Hohe Acht', 6],
+  [458, 564, 265, 0.06, 'Wippermann', 6],
+  [488, 554, 240, 0.22, 'Brünnchen', 6],
+  [518, 554, 215, 0.32, 'Brünnchen', 6],
+  [545, 562, 230, 0.18, 'Brünnchen', 6],
+  [572, 574, 285, -0.08, 'Pflanzgarten', 6],
+  [600, 596, 295, -0.12, 'Pflanzgarten', 6],
+  [622, 614, 245, 0.25, 'Pflanzgarten', 6],
+  [642, 630, 200, 0.38, 'Pflanzgarten', 6],
 
-  // ═══ SECTOR 7: Schwalbenschwanz → Galgenkopf → Döttinger Höhe → Start ═══
-  // Schwalbenschwanz chicane in the south-center
-  [555, 568, 185, -0.35, 'Schwalbenschwanz', 7],
-  [558, 580, 195, -0.25, 'Schwalbenschwanz', 7],
-  // Galgenkopf - opening up to the straight
-  [555, 590, 235, 0.12, 'Galgenkopf', 7],
-  [548, 598, 265, 0.05, 'Galgenkopf', 7],
-  // Döttinger Höhe - longest straight, absolute top speed, heading east
-  [535, 602, 320, 0.0, 'Döttinger Höhe', 7],
-  [515, 606, 345, 0.0, 'Döttinger Höhe', 7],
-  [490, 608, 360, 0.0, 'Döttinger Höhe', 7],
-  [460, 608, 369, 0.0, 'Döttinger Höhe', 7],
-  [430, 607, 365, 0.0, 'Döttinger Höhe', 7],
-  [400, 605, 360, 0.01, 'Döttinger Höhe', 7],
-  [370, 602, 355, 0.02, 'Döttinger Höhe', 7],
-  // Antoniusbuche
-  [345, 598, 340, 0.04, 'Antoniusbuche', 7],
-  [322, 594, 310, -0.08, 'Antoniusbuche', 7],
-  // Tiergarten
-  [305, 590, 270, -0.15, 'Tiergarten', 7],
-  [292, 586, 240, -0.22, 'Tiergarten', 7],
-  // Hohenrain chicane - last corners before start/finish
-  [282, 584, 185, 0.35, 'Hohenrain', 7],
-  [278, 580, 165, -0.40, 'Hohenrain', 7],
-  // Approach back to Start/Finish heading east
-  [280, 575, 200, -0.12, 'Hohenrain', 7],
-  [290, 572, 235, -0.05, 'T13 approach', 7],
-  [315, 570, 250, 0.02, 'T13 approach', 7],
-  [355, 568, 260, 0.0, 'T13 approach', 7],
-  [405, 566, 265, 0.0, 'T13 approach', 7],
-  [460, 565, 270, 0.01, 'T13 approach', 7],
-  [520, 566, 275, 0.02, 'T13 approach', 7],
-  [580, 567, 278, 0.02, 'T13 approach', 7],
-  [640, 568, 280, 0.01, 'Start/Ziel', 7],
+  // ═══ SECTOR 7: Schwalbenschwanz → Döttinger Höhe → Start ═══
+  [665, 645, 185, -0.32, 'Schwalbenschwanz', 7],
+  [682, 660, 195, -0.22, 'Schwalbenschwanz', 7],
+  [690, 680, 235, 0.10, 'Galgenkopf', 7],
+  [685, 698, 265, 0.04, 'Galgenkopf', 7],
+  [660, 710, 320, 0.0, 'Döttinger Höhe', 7],
+  [625, 714, 345, 0.0, 'Döttinger Höhe', 7],
+  [585, 712, 360, 0.0, 'Döttinger Höhe', 7],
+  [540, 708, 369, 0.0, 'Döttinger Höhe', 7],
+  [492, 706, 365, 0.0, 'Döttinger Höhe', 7],
+  [445, 702, 360, 0.0, 'Döttinger Höhe', 7],
+  [400, 700, 355, 0.01, 'Döttinger Höhe', 7],
+  [356, 702, 340, 0.03, 'Antoniusbuche', 7],
+  [318, 704, 310, -0.06, 'Antoniusbuche', 7],
+  [290, 706, 270, -0.12, 'Tiergarten', 7],
+  [268, 704, 240, -0.20, 'Tiergarten', 7],
+  [255, 698, 185, 0.32, 'Hohenrain', 7],
+  [250, 688, 165, -0.38, 'Hohenrain', 7],
+  [258, 672, 200, -0.10, 'Hohenrain', 7],
+  [280, 660, 235, -0.04, 'T13 approach', 7],
+  [320, 652, 250, 0.0, 'T13 approach', 7],
+  [380, 650, 260, 0.0, 'T13 approach', 7],
+  [450, 652, 268, 0.0, 'T13 approach', 7],
+  [530, 656, 275, 0.01, 'T13 approach', 7],
+  [615, 665, 278, 0.01, 'T13 approach', 7],
+  [688, 675, 280, 0.01, 'Start/Ziel', 7],
 ];
 
 // ── Sector Definitions ──────────────────────────────────────────────────────
