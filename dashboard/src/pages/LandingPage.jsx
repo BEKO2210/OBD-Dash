@@ -242,20 +242,6 @@ export default function LandingPage({ onEnterDashboard }) {
           </button>
         </div>
 
-        {/* Track Map (mini preview in hero) */}
-        <div
-          className="relative z-10 w-full max-w-2xl mx-auto opacity-40 hover:opacity-70 transition-opacity duration-500 px-4"
-          style={{ animation: 'fadeInUp 1.2s ease-out 1.1s both' }}
-        >
-          <TrackMap
-            trackX={data?.track_x}
-            trackY={data?.track_y}
-            trackPosition={data?.track_position ?? 0}
-            sectionName={null}
-            className="h-[150px] sm:h-[200px]"
-          />
-        </div>
-
         {/* Scroll indicator */}
         <div className="absolute bottom-6 sm:bottom-8 left-1/2 -translate-x-1/2 animate-bounce">
           <ChevronDown className="w-5 h-5 sm:w-6 sm:h-6 text-neutral-600" />
@@ -356,6 +342,8 @@ export default function LandingPage({ onEnterDashboard }) {
           <div className="mb-3 sm:mb-4">
             <VideoSync
               lapTimeMs={data?.lap_time ?? 0}
+              rpm={data?.rpm ?? 0}
+              speed={data?.speed ?? 0}
               isRunning={isRunning}
               isDemo={true}
               className=""
