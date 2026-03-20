@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Zap, Gauge, Activity, Timer, Thermometer, Shield, ChevronDown, Play, BarChart3, Cpu, Radio } from 'lucide-react';
 import useNurburgringSimulator from '../hooks/useNurburgringSimulator';
 import TrackMap from '../components/TrackMap';
+import VideoSync from '../components/VideoSync';
 import RPMGauge from '../panels/RPMGauge';
 import GForceBall from '../panels/GForceBall';
 import AFRMeter from '../panels/AFRMeter';
@@ -350,7 +351,17 @@ export default function LandingPage({ onEnterDashboard }) {
             </p>
           </div>
 
-          {/* Track Map + Live Stats */}
+          {/* Video + Track Map + Live Stats */}
+          {/* Onboard Video (full width, synced) */}
+          <div className="mb-3 sm:mb-4">
+            <VideoSync
+              lapTimeMs={data?.lap_time ?? 0}
+              isRunning={isRunning}
+              isDemo={true}
+              className="h-[200px] sm:h-[300px] lg:h-[400px]"
+            />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-5 gap-3 sm:gap-4 mb-3 sm:mb-4">
             {/* Track Map - 3 cols */}
             <div className="lg:col-span-3 panel-carbon p-3 sm:p-4 relative" style={{ minHeight: '300px' }}>

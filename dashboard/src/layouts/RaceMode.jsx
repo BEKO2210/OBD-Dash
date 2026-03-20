@@ -6,8 +6,9 @@ import AFRMeter from '../panels/AFRMeter';
 import ThermalPanel from '../panels/ThermalPanel';
 import ShiftAdvisor from '../panels/ShiftAdvisor';
 import TractionMonitor from '../panels/TractionMonitor';
+import VideoSync from '../components/VideoSync';
 
-export default function RaceMode({ data, history, connected }) {
+export default function RaceMode({ data, history, connected, isDemo = false, isRunning = false }) {
   const speed = data?.speed ?? 0;
   const gear = data?.gear ?? null;
   const lapTime = data?.lap_time ?? null;
@@ -86,8 +87,14 @@ export default function RaceMode({ data, history, connected }) {
         </div>
       </div>
 
-      {/* MIDDLE ROW: RPM | G-Force | AFR */}
-      <div className="flex-1 grid grid-cols-2 sm:grid-cols-3 gap-1.5 sm:gap-2 min-h-0">
+      {/* MIDDLE ROW: Video | RPM | G-Force | AFR */}
+      <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-1.5 sm:gap-2 min-h-0">
+        <VideoSync
+          lapTimeMs={data?.lap_time ?? 0}
+          isRunning={isRunning}
+          isDemo={isDemo}
+          className="h-full min-h-[120px]"
+        />
         <RPMGauge data={data} />
         <GForceBall data={data} history={history} />
         <div className="hidden sm:block">
